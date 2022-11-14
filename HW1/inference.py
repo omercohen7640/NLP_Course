@@ -1,6 +1,6 @@
 from preprocessing import read_test
 from tqdm import tqdm
-
+import numpy
 
 def memm_viterbi(sentence, pre_trained_weights, feature2id):
     """
@@ -8,7 +8,13 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id):
     You can implement Beam Search to improve runtime
     Implement q efficiently (refer to conditional probability definition in MEMM slides)
     """
-    #TODO implement viterbi alg.
+    #TODO implement viterbi algorithm
+    pi = numpy.ones((len(sentence),S,S))
+    for word, idx in enumerate(sentence):
+        for v, idx1 in enumerate(S):
+            for u, idx2 in enumerate(S):
+                probability = pre_trained_weights*feature2id(sentence)
+                pi[idx, idx1, idx2] = max(pi[idx-1]*probability)
     raise NotImplementedError
 
 
