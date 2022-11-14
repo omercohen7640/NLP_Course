@@ -74,6 +74,13 @@ class Feature2id:
         # Init all features dictionaries
         self.feature_to_idx = {
             "f100": OrderedDict(),
+            "f101": OrderedDict(),
+            "f102": OrderedDict(),
+            "f103": OrderedDict(),
+            "f104": OrderedDict(),
+            "f105": OrderedDict(),
+            "f106": OrderedDict(),
+            "f107": OrderedDict(),
         }
         self.represent_input_with_features = OrderedDict()
         self.histories_matrix = OrderedDict()
@@ -141,6 +148,28 @@ def represent_input_with_features(history: Tuple, dict_of_dicts: Dict[str, Dict[
     # f100
     if (c_word, c_tag) in dict_of_dicts["f100"]:
         features.append(dict_of_dicts["f100"][(c_word, c_tag)])
+    # TODO FIX all if conditioon and features input according to the definition
+    # f101
+    if (c_word, c_tag) in dict_of_dicts["f101"]:
+        features.append(dict_of_dicts["f101"][(c_word, c_tag)])
+    # f102
+    if (c_word, c_tag) in dict_of_dicts["f102"]:
+        features.append(dict_of_dicts["f102"][(c_word, c_tag)])
+    # f103
+    if (c_word, c_tag) in dict_of_dicts["f103"]:
+        features.append(dict_of_dicts["f103"][(c_word, c_tag)])
+    # f104
+    if (c_word, c_tag) in dict_of_dicts["f104"]:
+        features.append(dict_of_dicts["f104"][(c_word, c_tag)])
+    # f105
+    if (c_word, c_tag) in dict_of_dicts["f105"]:
+        features.append(dict_of_dicts["f105"][(c_word, c_tag)])
+    # f106
+    if (c_word, c_tag) in dict_of_dicts["f106"]:
+        features.append(dict_of_dicts["f106"][(c_word, c_tag)])
+    # f107
+    if (c_word, c_tag) in dict_of_dicts["f107"]:
+        features.append(dict_of_dicts["f107"][(c_word, c_tag)])
 
     return features
 
