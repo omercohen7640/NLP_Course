@@ -22,7 +22,7 @@ def main():
     pre_trained_weights = optimal_params[0]
 
     print(pre_trained_weights)
-    tag_all_test(test_path, pre_trained_weights, feature2id, predictions_path)
+    tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predictions_path)
 
 
 if __name__ == '__main__':
