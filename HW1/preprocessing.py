@@ -21,6 +21,7 @@ class FeatureStatistics:
         '''
         self.tags = set()  # a set of all the seen tags
         self.tags.add("~")
+        self.tags.add("*")
         self.tags_counts = defaultdict(int)  # a dictionary with the number of times each tag appeared in the text
         self.words_count = defaultdict(int)  # a dictionary with the number of times each word appeared in the text
         self.histories = []  # a list of all the histories seen at the test
@@ -38,11 +39,14 @@ class FeatureStatistics:
                 split_words = line.split(' ')
                 for word_idx in range(len(split_words)):
                     cur_word, cur_tag = split_words[word_idx].split('_')
-                    pre_word, pre_tag, prepre_word, prepre_tag=('','','','')
-                    if word_idx > 0:
+                    pre_word, pre_tag, prepre_word, prepre_tag=('*','*','*','*')
+                    n_word = '~'
+                    if word_idx >= 1:
                         pre_word, pre_tag = split_words[word_idx-1].split('_')
-                    if word_idx > 1:
+                    if word_idx >= 2:
                         prepre_word, prepre_tag = split_words[word_idx-2].split('_')
+                    if word_idx+1 != range(len(split_words)):
+                        n_word,_= split_words[word_idx+1].split('_')
                     self.tags.add(cur_tag)
                     self.tags_counts[cur_tag] += 1
                     self.words_count[cur_word] += 1
@@ -94,10 +98,10 @@ class FeatureStatistics:
                         self.feature_rep_dict["f106"][(pre_word, cur_tag)] += 1
 
                     # f107
-                    if (cur_word, pre_tag) not in self.feature_rep_dict["f105"]:
-                        self.feature_rep_dict["f107"][(cur_word, pre_tag)] = 1
+                    if (n_word, cur_tag) not in self.feature_rep_dict["f105"]:
+                        self.feature_rep_dict["f107"][(n_word, cur_tag)] = 1
                     else:
-                        self.feature_rep_dict["f107"][(cur_word, pre_tag)] += 1
+                        self.feature_rep_dict["f107"][(n_word, cur_tag)] += 1
 
                 sentence = [("*", "*"), ("*", "*")]
                 for pair in split_words:
@@ -110,6 +114,8 @@ class FeatureStatistics:
                         sentence[i - 2][1], sentence[i + 1][0])
 
                     self.histories.append(history)
+
+
 
 
 class Feature2id:
