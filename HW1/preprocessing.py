@@ -48,43 +48,43 @@ class FeatureStatistics:
                     self.tags_counts[cur_tag] += 1
                     self.words_count[cur_word] += 1
                     #TODO: count features
-                    if (cur_word, cur_tag) not in self.feature_rep_dict["f100"]:
-                        self.feature_rep_dict["f100"][(cur_word, cur_tag)] = 1
-                    else:
-                        self.feature_rep_dict["f100"][(cur_word, cur_tag)] += 1
-
-                    # f101 +f102
-                    for i in range(1, 5):
-                        if len(cur_word) < i:
-                            break
-                        prefix = cur_word[:i]
-                        if (prefix, cur_tag) not in self.feature_rep_dict["f101"]:
-                            self.feature_rep_dict["f101"][(prefix, cur_tag)] = 1
-                        else:
-                            self.feature_rep_dict["f101"][(prefix, cur_tag)] += 1
-                        suffix = cur_word[-i:]
-                        if (suffix, cur_tag) not in self.feature_rep_dict["f102"]:
-                            self.feature_rep_dict["f102"][(suffix, cur_tag)] = 1
-                        else:
-                            self.feature_rep_dict["f102"][(suffix, cur_tag)] += 1
-
-                    # f103
-                    if (prepre_tag, pre_tag, cur_tag) not in self.feature_rep_dict["f103"]:
-                        self.feature_rep_dict["f103"][(prepre_tag, pre_tag, cur_tag)] = 1
-                    else:
-                        self.feature_rep_dict["f103"][(prepre_tag, pre_tag, cur_tag)] += 1
-
-                    # f104
-                    if (pre_tag, cur_tag) not in self.feature_rep_dict["f103"]:
-                        self.feature_rep_dict["f103"][(pre_tag, cur_tag)] = 1
-                    else:
-                        self.feature_rep_dict["f103"][(pre_tag, cur_tag)] += 1
-
-                    # f105
-                    if cur_tag not in self.feature_rep_dict["f103"]:
-                        self.feature_rep_dict["f103"][cur_tag] = 1
-                    else:
-                        self.feature_rep_dict["f103"][cur_tag] += 1
+                    # if (cur_word, cur_tag) not in self.feature_rep_dict["f100"]:
+                    #     self.feature_rep_dict["f100"][(cur_word, cur_tag)] = 1
+                    # else:
+                    #     self.feature_rep_dict["f100"][(cur_word, cur_tag)] += 1
+                    #
+                    # # f101 +f102
+                    # for i in range(1, 5):
+                    #     if len(cur_word) < i:
+                    #         break
+                    #     prefix = cur_word[:i]
+                    #     if (prefix, cur_tag) not in self.feature_rep_dict["f101"]:
+                    #         self.feature_rep_dict["f101"][(prefix, cur_tag)] = 1
+                    #     else:
+                    #         self.feature_rep_dict["f101"][(prefix, cur_tag)] += 1
+                    #     suffix = cur_word[-i:]
+                    #     if (suffix, cur_tag) not in self.feature_rep_dict["f102"]:
+                    #         self.feature_rep_dict["f102"][(suffix, cur_tag)] = 1
+                    #     else:
+                    #         self.feature_rep_dict["f102"][(suffix, cur_tag)] += 1
+                    #
+                    # # f103
+                    # if (prepre_tag, pre_tag, cur_tag) not in self.feature_rep_dict["f103"]:
+                    #     self.feature_rep_dict["f103"][(prepre_tag, pre_tag, cur_tag)] = 1
+                    # else:
+                    #     self.feature_rep_dict["f103"][(prepre_tag, pre_tag, cur_tag)] += 1
+                    #
+                    # # f104
+                    # if (pre_tag, cur_tag) not in self.feature_rep_dict["f103"]:
+                    #     self.feature_rep_dict["f103"][(pre_tag, cur_tag)] = 1
+                    # else:
+                    #     self.feature_rep_dict["f103"][(pre_tag, cur_tag)] += 1
+                    #
+                    # # f105
+                    # if cur_tag not in self.feature_rep_dict["f103"]:
+                    #     self.feature_rep_dict["f103"][cur_tag] = 1
+                    # else:
+                    #     self.feature_rep_dict["f103"][cur_tag] += 1
 
                 sentence = [("*", "*"), ("*", "*")]
                 for pair in split_words:
@@ -186,6 +186,7 @@ def represent_input_with_features(history: Tuple, dict_of_dicts: Dict[str, Dict[
     p_tag = history[3]
     pp_word = history[4]
     pp_tag = history[5]
+    n_word = history[6]
     features = []
 
     # f100
@@ -220,7 +221,7 @@ def represent_input_with_features(history: Tuple, dict_of_dicts: Dict[str, Dict[
         features.append(dict_of_dicts["f106"][(c_word, c_tag)])
 
     # f107
-    if (c_word, c_tag) in dict_of_dicts["f107"]:
+    if (n_word, c_tag) in dict_of_dicts["f107"]:
         features.append(dict_of_dicts["f107"][(c_word, c_tag)])
 
     return features
