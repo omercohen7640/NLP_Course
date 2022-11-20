@@ -2,7 +2,7 @@ import numpy as np
 import scipy.special
 from scipy.sparse import csr_matrix
 
-from preprocessing import read_test
+from preprocessing import read_test, represent_input_with_features
 from tqdm import tqdm
 import numpy
 
@@ -15,18 +15,19 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics):
     """
     # TODO implement viterbi algorithm
     S = statistics.tags
+    S = sorted(S)
     pi = numpy.zeros((len(sentence) + 1, len(S), len(S)))
     bp = numpy.zeros((len(sentence) + 1, len(S), len(S)))
-    pi[0, '*', '*'] = 1
-    bp[0, '*', '*'] = 1
-    for idx in range(1, len(sentence) + 1):
+    pi[0, S.index('*'), S.index('*')] = 1
+    bp[0, S.index('*'), S.index('*')] = 1
+    for idx in range(2, len(sentence)-1): # OMER: maybe it should be len() +1
         for idx1, v in enumerate(S):
             for idx2, u in enumerate(S):
                 probability = q_cal(S=S, sentence=sentence, pre_trained_weights=pre_trained_weights,
                                     feature2id=feature2id, v=v, u=u, idx=idx)
-                mul = pi[idx - 1, :, idx2] * probability
-                bp[idx, idx2, idx1] = numpy.argmax(mul)
-                pi[idx, idx2, idx1] = mul[bp[idx, idx2, idx1]]
+                mul = pi[idx - 2, :, idx2] * probability
+                bp[idx-1, idx2, idx1] = numpy.argmax(mul)
+                pi[idx-1, idx2, idx1] = mul[int(bp[idx-1, idx2, idx1])]
     tags = numpy.argmax(pi[len(sentence)])
     tags = [int(tags / len(S)), int(tags % len(S))]
     for k in reversed(range(1, len(sentence) - 1)):
@@ -36,10 +37,11 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics):
 
 def q_cal(S, sentence, pre_trained_weights, feature2id, v, u, idx):
     n_features = feature2id.n_total_features
-    binary_ind = [feature2id.represent_input_with_features(
-        zip(reversed(sentence[idx - 2:idx]), [v, u, max_tag]) + [sentence[idx + 1]],
-        feature2id.feature_to_idx) for max_tag in S]
-    f_xy = np.zeros(len(S), n_features)
+    binary_ind = []
+    for tag in S:
+        history = tuple(list(reversed(sentence[idx - 2:idx+1])) + [tag, u, v] + [sentence[idx + 1]])
+        binary_ind.append(represent_input_with_features(history, feature2id.feature_to_idx))
+    f_xy = np.zeros((len(S), n_features))
     for i, indices in zip(range(len(S)), binary_ind):
         f_xy[i, indices] = 1
     sparse_fxy = csr_matrix(f_xy)
