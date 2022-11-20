@@ -30,14 +30,22 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_wid
                 idxu = S.index(u)
                 probability = q_cal(S=S, sentence=sentence, pre_trained_weights=pre_trained_weights,
                                     feature2id=feature2id, v=v, u=u, idx=idx,beam=beam)
+                indices_to_zero = []
+                for s in S:
+                    if s not in distinct:
+                        indices_to_zero.append(S.index(s))
+                probability[indices_to_zero] = 0
                 mul = pi[idx - 2, :, idxu] * probability
                 t = int(np.argmax(mul))
                 bp[idx-1, idxu, idxv] = t
                 pi[idx-1, idxu, idxv] = mul[t]
         beam = []
         ind = numpy.argpartition(pi[idx-1].flatten(), -beam_width)[-beam_width:]
+        mask = np.zeros((len(S),len(S)))
         for i in ind:
             beam.append((S[int(i / len(S))], S[int(i % len(S))]))
+            mask[int(i / len(S)), int(i % len(S))] = 1
+        pi[idx-1, :, :] = pi[idx-1, :, :]*mask
         distinct = [element[1] for element in beam]
     tags = numpy.argmax(pi[pi.shape[0], :, :])
     tags = [int(tags / len(S)), int(tags % len(S))]
@@ -49,11 +57,11 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_wid
 def q_cal(S, sentence, pre_trained_weights, feature2id, v, u, idx, beam=None):
     n_features = feature2id.n_total_features
     binary_ind = []
-    if beam is not None:
-        S = []
-        for i, j in beam:
-            if j == u:
-                S.append(i)
+    # if beam is not None:
+    #     S = []
+    #     for i, j in beam:
+    #         if j == u:
+    #             S.append(i)
     for tag in S:
         zipped_list = zip(list(reversed(sentence[idx - 2:idx+1])), [v, u, tag])
         zipped_list_flat=[]
