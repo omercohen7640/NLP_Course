@@ -23,7 +23,7 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_wid
     bp[0, S.index('*'), S.index('*')] = 1
     beam = S if beam_width is None else [('*','*')]
     distinct = S if beam_width is None else ['*']
-    for idx in range(2, len(sentence)+1):
+    for idx in range(2, len(sentence)-1):
         for v in S:
             idxv = S.index(v)
             for u in distinct:
@@ -31,8 +31,9 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_wid
                 probability = q_cal(S=S, sentence=sentence, pre_trained_weights=pre_trained_weights,
                                     feature2id=feature2id, v=v, u=u, idx=idx,beam=beam)
                 indices_to_zero = []
+                t_beam = [element[0] for element in beam]
                 for s in S:
-                    if s not in distinct:
+                    if s not in t_beam:
                         indices_to_zero.append(S.index(s))
                 probability[indices_to_zero] = 0
                 mul = pi[idx - 2, :, idxu] * probability
@@ -47,7 +48,7 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_wid
             mask[int(i / len(S)), int(i % len(S))] = 1
         pi[idx-1, :, :] = pi[idx-1, :, :]*mask
         distinct = [element[1] for element in beam]
-    tags = numpy.argmax(pi[pi.shape[0], :, :])
+    tags = numpy.argmax(pi[pi.shape[0]-1, :, :])
     tags = [int(tags / len(S)), int(tags % len(S))]
     for k in reversed(range(1, len(sentence) - 1)):
         tags.append(bp[k + 2, tags[k-2], tags[k-1]])
