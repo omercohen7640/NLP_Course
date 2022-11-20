@@ -195,15 +195,15 @@ def represent_input_with_features(history: Tuple, dict_of_dicts: Dict[str, Dict[
         -> List[int]:
     """
         Extract feature vector in per a given history
-        @param history: tuple{c_word, p_word, pp_word, c_tag, p_tag, pp_tag, n_word}
+        @param history: tuple{c_word, c_tag, p_word, p_tag, pp_word, pp_tag, n_word}
         @param dict_of_dicts: a dictionary of each feature and the index it was given
         @return a list with all features that are relevant to the given history
     """
     c_word = history[0]
-    p_word = history[1]
-    pp_word = history[2]
-    c_tag = history[3]
-    p_tag = history[4]
+    c_tag = history[1]
+    p_word = history[2]
+    p_tag = history[3]
+    pp_word = history[4]
     pp_tag = history[5]
     n_word = history[6]
     features = []
