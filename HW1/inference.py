@@ -17,8 +17,8 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_wid
     # TODO implement viterbi algorithm
     S = statistics.tags
     S = sorted(S)
-    pi = numpy.zeros((len(sentence), len(S), len(S)))
-    bp = numpy.zeros((len(sentence), len(S), len(S)))
+    pi = numpy.zeros((len(sentence), len(S), len(S)), dtype=int)
+    bp = numpy.zeros((len(sentence), len(S), len(S)), dtype=int)
     pi[0, S.index('*'), S.index('*')] = 1
     bp[0, S.index('*'), S.index('*')] = 1
     beam = S if beam_width is None else [('*','*')]
@@ -48,10 +48,12 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_wid
             mask[int(i / len(S)), int(i % len(S))] = 1
         pi[idx-1, :, :] = pi[idx-1, :, :]*mask
         distinct = [element[1] for element in beam]
-    tags = numpy.argmax(pi[pi.shape[0]-1, :, :])
-    tags = [int(tags / len(S)), int(tags % len(S))]
-    for k in reversed(range(1, len(sentence) - 1)):
-        tags.append(bp[k + 2, tags[k-2], tags[k-1]])
+    last_word_argmax = numpy.argmax(pi[pi.shape[0]-1, :, S.index('~')])
+    tags_id = len(sentence-1)*[0]
+    tags_id[-2], tags_id[-1] = (int(last_word_argmax/len(S)), int(last_word_argmax % len(S)))
+    for k in reversed(range(1, len(sentence)-2)):
+        tags_id[k] = int(bp[k+2, tags_id[k+1], tags_id[k+2]])
+    tags = [S[i] for i in tags_id]
     return tags
 
 
@@ -88,7 +90,8 @@ def tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predict
     for k, sen in tqdm(enumerate(test), total=len(test)):
         sentence = sen[0]
         pred = memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_width=beam_width)[1:]
-        sentence = sentence[2:]
+
+        sentence = sentence[2:-1]
         for i in range(len(pred)):
             if i > 0:
                 output_file.write(" ")
