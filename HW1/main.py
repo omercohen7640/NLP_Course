@@ -39,7 +39,7 @@ def main():
 
     print(pre_trained_weights)
     tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predictions_path)
-    calc_acc(predictions_path,test_path)
+    calc_acc(predictions_path, test_path)
 
 if __name__ == '__main__':
     main()
