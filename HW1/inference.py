@@ -223,7 +223,7 @@ def q_cal_new(S, sentence, pre_trained_weights, feature2id, v, u, current_word_i
     for t in t_list:
         binary_indexs = []
         for s in S:
-            history = (sentence[current_word_idx],v, sentence[current_word_idx+1], u, sentence[current_word_idx-2], t,sentence[current_word_idx+1] )
+            history = (sentence[current_word_idx], s, sentence[current_word_idx-1], u, sentence[current_word_idx-2], t, sentence[current_word_idx+1])
             binary_indexs.append(represent_input_with_features(history, feature2id.feature_to_idx))
         f_xy = np.zeros((len(S), n_features))
         for i, indices in zip(range(len(S)), binary_indexs):
@@ -262,7 +262,7 @@ def memm_viterbi_new(sentence, pre_trained_weights, feature2id, statistics, beam
     tags_index = (n - 1) * [0]  # we do not tag the last word (~)
     argmax_pi_n = np.argmax(pi[current_pi_idx].flatten())
     tags_index[n - 3], tags_index[n - 2] = int(argmax_pi_n / len(S)), int(argmax_pi_n % len(S))
-    for k in reversed(range(1, current_pi_idx-1)):
+    for k in reversed(range(-1, current_pi_idx-1)):
         tags_index[k] = bp[k + 2, tags_index[k+1], tags_index[k+2]]
     tags = [S[t] for t in tags_index]
 
