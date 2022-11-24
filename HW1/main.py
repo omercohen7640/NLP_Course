@@ -12,12 +12,12 @@ def calc_acc(pred_path, test_path):
     pred_lines = pred_file.readlines()
     test_lines = test_file.read_lines()
     for p_line,t_line in zip(pred_lines,test_lines):
-        p_line = p_line[:-1] if p_line[-1:] == "\n" else p_line
-        t_line = t_line[:-1] if t_line[-1:] == "\n" else t_line
+        p_line = p_line[:-1] if p_line[-1] == "\n" else p_line
+        t_line = t_line[:-1] if t_line[-1] == "\n" else t_line
         n += len(t_line)
-        p_tags = [word_tag[1] for word_tag in p_line.split(' ')]
-        t_tags = [word_tag[1] for word_tag in t_line.split(' ')]
-        for p_tag,t_tag in zip(p_tags,t_tags):
+        p_tags = [word_tag.split('_')[1] for word_tag in p_line.split(' ')]
+        t_tags = [word_tag.split('_')[1] for word_tag in t_line.split(' ')]
+        for p_tag, t_tag in zip(p_tags,t_tags):
             correct += int(p_tag == t_tag)
     print(f'Accuracy is: {correct/n}')
 def main():
