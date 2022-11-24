@@ -6,7 +6,7 @@ from preprocessing import read_test, represent_input_with_features
 from tqdm import tqdm
 import numpy
 
-beam_width = 5
+beam_width = 2
 
 
 def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_width=None):
@@ -94,7 +94,7 @@ def tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predict
         sentence = sen[0]
         pred = memm_viterbi_new(sentence, pre_trained_weights, feature2id, statistics, beam_width=beam_width)[1:]
 
-        sentence = sentence[2:-1]
+        sentence = sentence[2:]
         for i in range(len(pred)):
             if i > 0:
                 output_file.write(" ")
@@ -223,7 +223,7 @@ def q_cal_new(S, sentence, pre_trained_weights, feature2id, v, u, current_word_i
     for t in t_list:
         binary_indexs = []
         for s in S:
-            history = (sentence[current_word_idx], s, sentence[current_word_idx-1], u, sentence[current_word_idx-2], t, sentence[current_word_idx+1])
+            history = (sentence[current_word_idx],s, sentence[current_word_idx-1], u, sentence[current_word_idx-2], t,sentence[current_word_idx+1] )
             binary_indexs.append(represent_input_with_features(history, feature2id.feature_to_idx))
         f_xy = np.zeros((len(S), n_features))
         for i, indices in zip(range(len(S)), binary_indexs):
@@ -263,7 +263,7 @@ def memm_viterbi_new(sentence, pre_trained_weights, feature2id, statistics, beam
     argmax_pi_n = np.argmax(pi[current_pi_idx].flatten())
     tags_index[n - 3], tags_index[n - 2] = int(argmax_pi_n / len(S)), int(argmax_pi_n % len(S))
     for k in reversed(range(-1, current_pi_idx-1)):
-        tags_index[k] = bp[k + 2, tags_index[k+1], tags_index[k+2]]
+        tags_index[k+1] = bp[k + 2, tags_index[k+2], tags_index[k+3]]
     tags = [S[t] for t in tags_index]
 
     return tags
