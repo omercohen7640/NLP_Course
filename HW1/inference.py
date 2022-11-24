@@ -223,7 +223,7 @@ def q_cal_new(S, sentence, pre_trained_weights, feature2id, v, u, current_word_i
     for t in t_list:
         binary_indexs = []
         for s in S:
-            history = (sentence[current_word_idx - 2], t, sentence[current_word_idx - 1], u, sentence[current_word_idx], s, sentence[current_word_idx + 1])
+            history = (sentence[current_word_idx],v, sentence[current_word_idx+1], u, sentence[current_word_idx-2], t,sentence[current_word_idx+1] )
             binary_indexs.append(represent_input_with_features(history, feature2id.feature_to_idx))
         f_xy = np.zeros((len(S), n_features))
         for i, indices in zip(range(len(S)), binary_indexs):
