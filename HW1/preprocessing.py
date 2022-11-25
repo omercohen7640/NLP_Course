@@ -106,18 +106,17 @@ class FeatureStatistics:
                         self.feature_rep_dict["f107"][(n_word, cur_tag)] += 1
 
                     #f108
-                    if cur_word.isnumeric():
-                        if cur_tag not in self.feature_rep_dict["f108"]:
-                            self.feature_rep_dict["f108"][cur_tag] = 1
-                        else:
-                            self.feature_rep_dict["f108"][cur_tag] += 1
+
+                    if (str(cur_word.isnumeric()), cur_tag) not in self.feature_rep_dict["f108"]:
+                        self.feature_rep_dict["f108"][(str(cur_word.isnumeric()), cur_tag)] = 1
+                    else:
+                        self.feature_rep_dict["f108"][(str(cur_word.isnumeric()), cur_tag)] += 1
 
                     # f109
-                    if cur_word[0].isalpha() and (cur_word[0].capitalize() == cur_word[0]):
-                        if cur_tag not in self.feature_rep_dict["f109"]:
-                            self.feature_rep_dict["f109"][cur_tag] = 1
-                        else:
-                            self.feature_rep_dict["f109"][cur_tag] += 1
+                    if (str(cur_word[0].isalpha() and (cur_word[0].capitalize() == cur_word[0])), cur_tag) not in self.feature_rep_dict["f109"]:
+                        self.feature_rep_dict["f109"][(str(cur_word[0].isalpha() and (cur_word[0].capitalize() == cur_word[0])), cur_tag)] = 1
+                    else:
+                        self.feature_rep_dict["f109"][(str(cur_word[0].isalpha() and (cur_word[0].capitalize() == cur_word[0])), cur_tag)] += 1
 
                 sentence = [("*", "*"), ("*", "*")]
                 for pair in split_words:
@@ -156,7 +155,7 @@ class Feature2id:
             "f106": OrderedDict(),
             "f107": OrderedDict(),
             "f108": OrderedDict(),
-            "f109": OrderedDict(),
+            'f109': OrderedDict(),
         }
         self.represent_input_with_features = OrderedDict()
         self.histories_matrix = OrderedDict()
@@ -261,14 +260,12 @@ def represent_input_with_features(history: Tuple, dict_of_dicts: Dict[str, Dict[
         features.append(dict_of_dicts["f107"][(n_word, c_tag)])
 
     # f108
-    if c_word.isnumeric():
-        if c_tag in dict_of_dicts["f108"]:
-            features.append(dict_of_dicts["f108"][c_tag])
+    if (str(c_word.isnumeric()), c_tag) in dict_of_dicts["f108"]:
+        features.append(dict_of_dicts["f108"][(str(c_word.isnumeric()), c_tag)])
 
     # f109
-    if c_word[0].isalpha() and (c_word[0].capitalize() == c_word[0]):
-        if c_tag in dict_of_dicts["f109"]:
-            features.append(dict_of_dicts["f109"][c_tag])
+    if (str(c_word[0].isalpha() and (c_word[0].capitalize() == c_word[0])), c_tag) in dict_of_dicts["f109"]:
+        features.append(dict_of_dicts["f109"][(str(c_word[0].isalpha() and (c_word[0].capitalize() == c_word[0])), c_tag)])
     return features
 
 
