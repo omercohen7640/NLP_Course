@@ -7,9 +7,9 @@ from preprocessing import read_test, represent_input_with_features
 from tqdm import tqdm
 import numpy
 
-beam_width = 2
+beam_width = 5
 
-def tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predictions_path):
+def tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predictions_path, is_model_2=False):
     tagged = "test" in test_path
     test = read_test(test_path, tagged=tagged)
 
@@ -17,7 +17,7 @@ def tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predict
 
     for k, sen in tqdm(enumerate(test), total=len(test)):
         sentence = sen[0]
-        pred = memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_width=beam_width)[2:]
+        pred = memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_width=beam_width, is_model_2=is_model_2)[2:]
 
         sentence = sentence[2:-1] # cut off the ~ and *
         for i in range(len(pred)):
@@ -54,7 +54,7 @@ def q_cal(S, sentence, pre_trained_weights, feature2id, v, u, current_word_idx, 
     return numpy.array(probabilities)
 
 
-def q_cal_efficient(S, sentence, pre_trained_weights, feature2id, v, u, current_word_idx, t_list):
+def q_cal_efficient(S, sentence, pre_trained_weights, feature2id, v, u, current_word_idx, t_list, is_model_2=False):
     n_features = feature2id.n_total_features
     probabilities = []
     for t in t_list:
@@ -62,7 +62,7 @@ def q_cal_efficient(S, sentence, pre_trained_weights, feature2id, v, u, current_
         row_indices = []
         for row_idx, s in enumerate(S):
             history = (sentence[current_word_idx],s, sentence[current_word_idx-1], u, sentence[current_word_idx-2], t,sentence[current_word_idx+1] )
-            feature_vector = represent_input_with_features(history, feature2id.feature_to_idx)
+            feature_vector = represent_input_with_features(history, feature2id.feature_to_idx, is_model_2=is_model_2)
             row_indices.extend(len(feature_vector)*[row_idx])
             col_indices.extend(feature_vector)
         data = len(row_indices)*[1]
@@ -71,7 +71,7 @@ def q_cal_efficient(S, sentence, pre_trained_weights, feature2id, v, u, current_
         probabilities.append(scipy.special.softmax(sparse_fxy.dot(pre_trained_weights))[S.index(v)])
     return numpy.array(probabilities)
 
-def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_width=None):
+def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_width=None, is_model_2=False):
     n = len(sentence)  # includes the *,* and ~
     S = statistics.tags
     S = sorted(S)
@@ -93,7 +93,7 @@ def memm_viterbi(sentence, pre_trained_weights, feature2id, statistics, beam_wid
                 # end = time.time()
                 # print(end-start)
                 # start = time.time()
-                q_vector_eff = q_cal_efficient(S, sentence, pre_trained_weights, feature2id, v, u, current_word_idx, t_list)
+                q_vector_eff = q_cal_efficient(S, sentence, pre_trained_weights, feature2id, v, u, current_word_idx, t_list, is_model_2=is_model_2)
                 # end = time.time()
                 # print(end - start)
                 # assert (q_vector_eff == q_vector).all()

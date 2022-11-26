@@ -2,20 +2,26 @@ from scipy import sparse
 from collections import OrderedDict, defaultdict
 import numpy as np
 from typing import List, Dict, Tuple
-
+import string
 
 WORD = 0
 TAG = 1
 
 
 class FeatureStatistics:
-    def __init__(self):
+    def __init__(self, is_model_2=False):
         self.n_total_features = 0  # Total number of features accumulated
-
+        self.is_model_2 = is_model_2
         # Init all features dictionaries
         feature_dict_list = ["f100","f101","f102","f103","f104","f105","f106","f107","f108","f109"]  # the feature classes used in the code
         # f108 - one if T==t and current word contain only numbers
         # f109 - one if T==T and word starts with capital letter
+        if is_model_2:
+            feature_dict_list += ["f110","f111","f112","f113"]
+        # f110 (pp_word,p_word,c_word,c_tag)
+        # f111 (2-letter-suffix,word,current tag)
+        # f112 (number_of letter > 4, tag)
+        # f113 (contain puncuation,tag)
         self.feature_rep_dict = {fd: OrderedDict() for fd in feature_dict_list}
         '''
         A dictionary containing the counts of each data regarding a feature class. For example in f100, would contain
@@ -106,7 +112,6 @@ class FeatureStatistics:
                         self.feature_rep_dict["f107"][(n_word, cur_tag)] += 1
 
                     #f108
-
                     if (str(cur_word.isnumeric()), cur_tag) not in self.feature_rep_dict["f108"]:
                         self.feature_rep_dict["f108"][(str(cur_word.isnumeric()), cur_tag)] = 1
                     else:
@@ -117,6 +122,31 @@ class FeatureStatistics:
                         self.feature_rep_dict["f109"][(str(cur_word[0].isalpha() and (cur_word[0].capitalize() == cur_word[0])), cur_tag)] = 1
                     else:
                         self.feature_rep_dict["f109"][(str(cur_word[0].isalpha() and (cur_word[0].capitalize() == cur_word[0])), cur_tag)] += 1
+
+                    if self.is_model_2:
+                        # f110
+                        if prepre_word != '' and pre_word != '':
+                            if (prepre_word,pre_word,cur_word, cur_tag) not in self.feature_rep_dict["f110"]:
+                                self.feature_rep_dict["f110"][(prepre_word, pre_word, cur_word, cur_tag)] = 1
+                            else:
+                                self.feature_rep_dict["f110"][(prepre_word, pre_word, cur_word, cur_tag)] += 1
+                        # f111 (2-letter-suffix,word,current tag)
+                        if len(cur_word) > 2:
+                            if (cur_word[-2], cur_word, cur_tag) not in self.feature_rep_dict["f111"]:
+                                self.feature_rep_dict["f111"][(cur_word[-2], cur_word, cur_tag)] = 1
+                            else:
+                                self.feature_rep_dict["f111"][(cur_word[-2], cur_word, cur_tag)] += 1
+                        # f112 (number_of letter, tag)
+                        if (str(len(cur_word) <= 4), cur_tag) not in self.feature_rep_dict["f112"]:
+                            self.feature_rep_dict["f112"][(str(len(cur_word) <= 4), cur_tag)] = 1
+                        else:
+                            self.feature_rep_dict["f112"][(str(len(cur_word) <= 4), cur_tag)] += 1
+                        is_punc = str(any([c in string.punctuation for c in cur_word]))
+                        # f113 (contain puncuation,tag)
+                        if (is_punc, cur_tag) not in self.feature_rep_dict["f113"]:
+                            self.feature_rep_dict["f113"][(is_punc, cur_tag)] = 1
+                        else:
+                            self.feature_rep_dict["f113"][(is_punc, cur_tag)] += 1
 
                 sentence = [("*", "*"), ("*", "*")]
                 for pair in split_words:
@@ -134,7 +164,7 @@ class FeatureStatistics:
 
 
 class Feature2id:
-    def __init__(self, feature_statistics: FeatureStatistics, threshold: int):
+    def __init__(self, feature_statistics: FeatureStatistics, threshold: int, is_model_2=False):
         """
         @param feature_statistics: the feature statistics object
         @param threshold: the minimal number of appearances a feature should have to be taken
@@ -143,7 +173,7 @@ class Feature2id:
         self.threshold = threshold  # feature count threshold - empirical count must be higher than this
 
         self.n_total_features = 0  # Total number of features accumulated
-
+        self.is_model_2 = is_model_2
         # Init all features dictionaries
         self.feature_to_idx = {
             "f100": OrderedDict(),
@@ -157,6 +187,23 @@ class Feature2id:
             "f108": OrderedDict(),
             'f109': OrderedDict(),
         }
+        if is_model_2:
+            self.feature_to_idx = {
+                "f100": OrderedDict(),
+                "f101": OrderedDict(),
+                "f102": OrderedDict(),
+                "f103": OrderedDict(),
+                "f104": OrderedDict(),
+                "f105": OrderedDict(),
+                "f106": OrderedDict(),
+                "f107": OrderedDict(),
+                "f108": OrderedDict(),
+                "f109": OrderedDict(),
+                'f110': OrderedDict(),
+                'f111': OrderedDict(),
+                'f112': OrderedDict(),
+                'f113': OrderedDict(),
+            }
         self.represent_input_with_features = OrderedDict()
         self.histories_matrix = OrderedDict()
         self.histories_features = OrderedDict()
@@ -208,7 +255,7 @@ class Feature2id:
                 self.feature_statistics.histories), self.n_total_features), dtype=bool)
 
 
-def represent_input_with_features(history: Tuple, dict_of_dicts: Dict[str, Dict[Tuple[str, str], int]])\
+def represent_input_with_features(history: Tuple, dict_of_dicts: Dict[str, Dict[Tuple[str, str], int]], is_model_2=False)\
         -> List[int]:
     """
         Extract feature vector in per a given history
@@ -266,16 +313,36 @@ def represent_input_with_features(history: Tuple, dict_of_dicts: Dict[str, Dict[
     # f109
     if (str(c_word[0].isalpha() and (c_word[0].capitalize() == c_word[0])), c_tag) in dict_of_dicts["f109"]:
         features.append(dict_of_dicts["f109"][(str(c_word[0].isalpha() and (c_word[0].capitalize() == c_word[0])), c_tag)])
+
+    if is_model_2:
+        # f110
+        if (pp_word, p_word, c_word, c_tag) not in dict_of_dicts["f110"]:
+            features.append(dict_of_dicts["f110"][(pp_word, p_word, c_word, c_tag)])
+
+        # f111
+        if len(c_word) > 2:
+            if (c_word[-2], c_word, c_tag) not in dict_of_dicts["f111"]:
+                features.append(dict_of_dicts["f111"][(c_word[-2], c_word, c_tag)])
+
+        # f112
+        if (str(len(c_word) <= 4), c_tag) not in dict_of_dicts["f112"]:
+            features.append(dict_of_dicts["f112"][(str(len(c_word) <= 4), c_tag)])
+
+        # f113
+        is_punc = str(any([c in string.punctuation for c in c_word]))
+        if (is_punc, c_tag) not in dict_of_dicts["f113"]:
+            features.append(dict_of_dicts["f113"][(is_punc, c_tag)])
+
     return features
 
 
-def preprocess_train(train_path, threshold):
+def preprocess_train(train_path, threshold, is_model_2=False):
     # Statistics
-    statistics = FeatureStatistics()
+    statistics = FeatureStatistics(is_model_2=is_model_2)
     statistics.get_word_tag_pair_count(train_path)
 
     # feature2id
-    feature2id = Feature2id(statistics, threshold)
+    feature2id = Feature2id(statistics, threshold, is_model_2=is_model_2)
     feature2id.get_features_idx()
     feature2id.calc_represent_input_with_features()
     print(feature2id.n_total_features)
