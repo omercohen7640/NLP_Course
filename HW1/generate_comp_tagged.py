@@ -2,7 +2,7 @@ from main import *
 
 
 def main():
-    #small_model_comp()
+    small_model_comp()
     big_model_comp()
 
 
