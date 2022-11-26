@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+from os import path
 from preprocessing import preprocess_train
 from optimization import get_optimal_vector
 from inference import tag_all_test
@@ -38,37 +39,72 @@ def calc_acc(pred_path, test_path, S):
     for idx in top_confused:
         print(S[idx] + ' confused {}% of the time.'.format((1-conf_mat_norm[idx, idx]) * 100))
     conf_mat_norm_t = conf_mat_norm[top_confused, :]
-    #conf_mat_norm_t = conf_mat_norm_t[:, top_confused]
+    conf_mat_norm_t = conf_mat_norm_t[:, top_confused]
     plt.figure(dpi=1200)
-
-    disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat_norm_t, display_labels=np.array(S)[top_confused]).
+    disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat_norm_t, display_labels=np.array(S)[top_confused])
     disp.plot()
-
     plt.show()
     print(f'Accuracy is: {correct/n}')
+
+def create_dataset_for_small_models_eval(data_path):
+    for i in range(5):
+        data_file = open(data_path)
+        data_lines = np.array(data_file.readlines())
+        n = len(data_lines)
+        test_indices = np.random.choice(n, int(n/5), replace=False)
+        train_indices = np.delete(np.arange(n), test_indices)
+        train = data_lines[train_indices]
+        test = data_lines[test_indices]
+        new_test = open(data_path.replace('/', '/'+str(i)+"_test_"), 'w+')
+        new_train = open(data_path.replace('/', '/'+str(i)+"_train_"), 'w+')
+        new_test.writelines(test)
+        new_train.writelines(train)
+def evaluate_small_model():
+    train_path = "data/train2.wtag"
+    if not path.exists("data/0_test_train2.wtag"):
+        create_dataset_for_small_models_eval(train_path)
+    threshold = 10
+    lam = 10
+    for i in range(5):
+        current_train_path = "data/train2.wtag".replace('/', '/'+str(i)+"_train_")
+        current_test_path =  "data/train2.wtag".replace('/', '/'+str(i)+"_test_")
+
+        weights_path = 'small_'+str(i)+'_weights.pkl'
+        predictions_path = str(i)+'_predictions_train_2.wtag'
+
+        statistics, feature2id = preprocess_train(current_train_path, threshold)
+        get_optimal_vector(statistics=statistics, feature2id=feature2id, weights_path=weights_path, lam=lam)
+
+        with open(weights_path, 'rb') as f:
+            optimal_params, feature2id = pickle.load(f)
+        pre_trained_weights = optimal_params[0]
+        tag_all_test(current_test_path, pre_trained_weights, feature2id, statistics, predictions_path)
+        calc_acc(predictions_path, current_test_path, statistics.tags)
 
 
 def main():
     threshold = 1
     lam = 1
     #
-    train_path = "data/train1.wtag"
-    test_path = "data/test1.wtag"
-
-    weights_path = 'weights.pkl'
-    predictions_path = 'predictions_test_1.wtag'
-    # predictions_path = 'predictions_test_2.wtag'
-
-    statistics, feature2id = preprocess_train(train_path, threshold)
-    # get_optimal_vector(statistics=statistics, feature2id=feature2id, weights_path=weights_path, lam=lam)
-
+    train_path = "data/train2.wtag"
+    evaluate_small_model()
+    #
+    # test_path = "data/comp1.words"
+    #
+    # weights_path = 'weights.pkl'
+    # predictions_path = 'comp_m1_203860721_308428127.wtag'
+    # # predictions_path = 'predictions_test_2.wtag'
+    #
+    # statistics, feature2id = preprocess_train(train_path, threshold)
+    # # get_optimal_vector(statistics=statistics, feature2id=feature2id, weights_path=weights_path, lam=lam)
+    #
     # with open(weights_path, 'rb') as f:
     #      optimal_params, feature2id = pickle.load(f)
     # pre_trained_weights = optimal_params[0]
-    #
-    # print(pre_trained_weights)
+    # #
+    # # print(pre_trained_weights)
     # tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predictions_path)
-    calc_acc(predictions_path, test_path, statistics.tags)
+    # #calc_acc(predictions_path, test_path, statistics.tags)
 
 if __name__ == '__main__':
     main()
