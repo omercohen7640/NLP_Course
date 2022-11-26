@@ -42,13 +42,13 @@ def calc_acc(pred_path, test_path, S):
 
 def main():
     threshold = 1
-    # lam = 1
+    lam = 1
     #
     train_path = "data/train1.wtag"
-    test_path = "data/test1_copy.wtag"
+    test_path = "data/train1test.wtag"
     #
     weights_path = 'weights.pkl'
-    predictions_path = 'predictions_test1_copy.wtag'
+    predictions_path = 'predictions_train_1.wtag'
 
     statistics, feature2id = preprocess_train(train_path, threshold)
     get_optimal_vector(statistics=statistics, feature2id=feature2id, weights_path=weights_path, lam=lam)
