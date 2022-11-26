@@ -3,8 +3,9 @@ import numpy as np
 from preprocessing import preprocess_train
 from optimization import get_optimal_vector
 from inference import tag_all_test
-from sklearn.metrics import confusion_matrix
-S = {'VBP', 'WDT', 'RBS', 'PRP', "''", 'SYM', 'EX', 'FW', ':', '.', 'NNP', '$', 'POS', 'VBN', 'TO', 'CD', 'WP', '~', 'VB', 'PDT', 'UH', 'DT', 'MD', 'VBZ', 'WRB', 'JJS', 'RB', 'VBG', 'RP', 'NN', '-RRB-', 'CC', 'NNPS', 'VBD', 'JJR', 'NNS', '#', 'IN', 'JJ', '*', ',', '-LRB-', 'WP$', 'PRP$', '``', 'RBR'}
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+
 
 def calc_acc(pred_path, test_path, S):
     n = 0
@@ -30,13 +31,20 @@ def calc_acc(pred_path, test_path, S):
     S = list(S)
     conf_mat_norm = confusion_matrix(y_true=total_true_tags, y_pred=total_predicted_tags, labels=S, normalize='true')  # confusion matrix normalized to true tagging
     for i in range(conf_mat_norm.shape[0]):
-        if conf_mat_norm[:,i].sum() == 0:
-            conf_mat_norm[i,i] = 1
+        if conf_mat_norm[:, i].sum() == 0:
+            conf_mat_norm[i, i] = 1
     top_confused = np.argpartition(np.array([1.0] * len(S)) - np.diag(conf_mat_norm), -10)[-10:]
     print("the following tags the model confused the most")
     for idx in top_confused:
         print(S[idx] + ' confused {}% of the time.'.format((1-conf_mat_norm[idx, idx]) * 100))
+    conf_mat_norm_t = conf_mat_norm[top_confused, :]
+    #conf_mat_norm_t = conf_mat_norm_t[:, top_confused]
+    plt.figure(dpi=1200)
 
+    disp = ConfusionMatrixDisplay(confusion_matrix=conf_mat_norm_t, display_labels=np.array(S)[top_confused]).
+    disp.plot()
+
+    plt.show()
     print(f'Accuracy is: {correct/n}')
 
 
@@ -45,21 +53,22 @@ def main():
     lam = 1
     #
     train_path = "data/train1.wtag"
-    test_path = "data/train1test.wtag"
-    #
+    test_path = "data/test1.wtag"
+
     weights_path = 'weights.pkl'
-    predictions_path = 'predictions_train_1.wtag'
+    predictions_path = 'predictions_test_1.wtag'
+    # predictions_path = 'predictions_test_2.wtag'
 
     statistics, feature2id = preprocess_train(train_path, threshold)
-    get_optimal_vector(statistics=statistics, feature2id=feature2id, weights_path=weights_path, lam=lam)
+    # get_optimal_vector(statistics=statistics, feature2id=feature2id, weights_path=weights_path, lam=lam)
 
-    with open(weights_path, 'rb') as f:
-         optimal_params, feature2id = pickle.load(f)
-    pre_trained_weights = optimal_params[0]
-
-    print(pre_trained_weights)
-    tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predictions_path)
-    calc_acc(predictions_path, test_path, S)
+    # with open(weights_path, 'rb') as f:
+    #      optimal_params, feature2id = pickle.load(f)
+    # pre_trained_weights = optimal_params[0]
+    #
+    # print(pre_trained_weights)
+    # tag_all_test(test_path, pre_trained_weights, feature2id, statistics, predictions_path)
+    calc_acc(predictions_path, test_path, statistics.tags)
 
 if __name__ == '__main__':
     main()
