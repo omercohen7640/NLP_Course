@@ -98,7 +98,7 @@ def small_model_comp():
     test_path = "data/comp2.words"
 
     weights_path = 'weights_2.pkl'
-    predictions_path = 'comp_m1_203860721_308428127.wtag'
+    predictions_path = 'comp_m2_203860721_308428127.wtag'
 
     statistics, feature2id = preprocess_train(train_path, threshold, is_model_2=True)
     if not path.exists(weights_path):
@@ -115,7 +115,7 @@ def small_model_comp():
 def big_model_comp():
     threshold = 1
     lam = 1
-    train_path = "data/train2.wtag"
+    train_path = "data/train1.wtag"
     test_path = "data/comp1.words"
 
     weights_path = 'weights.pkl'
