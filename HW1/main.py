@@ -46,9 +46,10 @@ def calc_acc(pred_path, test_path, S):
 
     plt.show()
     print(f'Accuracy is: {correct/n}')
+    return correct/n
 
-def create_dataset_for_small_models_eval(data_path):
-    for i in range(5):
+def create_dataset_for_small_models_eval(data_path, k):
+    for i in range(k):
         data_file = open(data_path)
         data_lines = np.array(data_file.readlines())
         n = len(data_lines)
@@ -61,12 +62,14 @@ def create_dataset_for_small_models_eval(data_path):
         new_test.writelines(test)
         new_train.writelines(train)
 def evaluate_small_model():
-    train_path = "data/train2.wtag"
-    if not path.exists("data/0_test_train2.wtag"):
-        create_dataset_for_small_models_eval(train_path)
     threshold = 10
     lam = 10
-    for i in range(5):
+    ret_val = 0
+    k = 5
+    train_path = "data/train2.wtag"
+    if not path.exists("data/0_test_train2.wtag"):
+        create_dataset_for_small_models_eval(train_path, k)
+    for i in range():
         current_train_path = "data/train2.wtag".replace('/', '/'+str(i)+"_train_")
         current_test_path =  "data/train2.wtag".replace('/', '/'+str(i)+"_test_")
 
@@ -80,7 +83,8 @@ def evaluate_small_model():
             optimal_params, feature2id = pickle.load(f)
         pre_trained_weights = optimal_params[0]
         tag_all_test(current_test_path, pre_trained_weights, feature2id, statistics, predictions_path)
-        calc_acc(predictions_path, current_test_path, statistics.tags)
+        ret_val += calc_acc(predictions_path, current_test_path, statistics.tags)
+    print(f'Total Avg. Accuracy is: {ret_val/k}')
 
 
 def main():
