@@ -24,6 +24,8 @@ encoder_types = ['glove',
 
 parser.add_argument('-a', '--arch', metavar='ARCH', choices=model_names, required=False,
                     help='model architectures and datasets:\n' + ' | '.join(model_names))
+parser.add_argument('-d', '--dataset', metavar='DATASET', choices=model_names, required=False,
+                    help='model dataset:\n' + ' | '.join(model_names))
 parser.add_argument('-e', '--encoder', metavar='enc', choices=encoder_types, required=False,
                     help='encoder architectures:\n' + ' | '.join(encoder_types))
 parser.add_argument('--LR', default=0.1, type=float,

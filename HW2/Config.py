@@ -27,7 +27,7 @@ LOG = Logger()
 
 def get_dataset(dataset):
     if dataset == 'train':
-        return DataSets.get('CIFAR10', DATASET_DIR)
+        return DataSets.get('train', DATASET_DIR)
     elif dataset == 'test':
         return DataSets.get('CIFAR100', DATASET_DIR)
     elif dataset == 'dev':

@@ -163,14 +163,15 @@ class NERmodel:
         self.model_stats.plot_results(gpu=gpu)
 
     def train(self):
-        if self.model == linear:
+        if self.model == 'linear':
             #TODO implement SVM
             raise NotImplementedError
         else:
+            self.train_NN(self.epoch, dataset)
 
 
 
-    def train_NN(self, epoch, train_gen, gpu=0):
+    def train_NN(self, epoch, train_gen):
         cfg.LOG.write_title('Training Epoch {}'.format(epoch), terminal=(gpu == 0), gpu_num=gpu)
 
         if gpu == 0:
