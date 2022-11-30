@@ -11,6 +11,7 @@ class DataSets:
 
 class DataSet:
     def __init__(self, path):
+        self.X_vec = None
         self.embedder = None
         self.path = path
         is_tagged = 'tagged' in path
@@ -37,15 +38,16 @@ class DataSet:
         self.Y = all_sentences_y
 
     def embed_words(self, embedder):
-        if embedder not in ['word2vec', 'glove']:
-            print(f'{embedder} is not a familier embedder')
-            raise NotImplemented
         if embedder == 'glove':
             self.embedder = api.load('glove-wiki-gigaword-50')
         elif embedder == 'word2vec':
             self.embedder = api.load('word2vec-ruscorpora-300')
+        else:
+            print(f'{embedder} is not a familier embedder')
+            raise NotImplemented
             
         all_sentences_x_vectorized = []
         for sentence in self.X:
-            all_sentences_x_vectorized.append
+            all_sentences_x_vectorized.append(self.embedder[sentence])
+        self.X_vec = all_sentences_x_vectorized
 
