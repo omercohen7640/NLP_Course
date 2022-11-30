@@ -8,8 +8,8 @@ from time import time
 
 matplotlib.use('Agg')
 import torch
-
 import Config as cfg
+from model import NERmodel
 
 
 parser = argparse.ArgumentParser(description='Nimrod Admoni, nimrod216@gmail.com',
@@ -30,6 +30,8 @@ parser.add_argument('--LR', default=0.1, type=float,
                     help='starting learning rate')
 parser.add_argument('--LRD', default=0, type=int,
                     help='learning rate decay - if enabled LR is decreased')
+parser.add_argument('--batch_size', default=16, type=int,
+                    help='number of samples in mini batch')
 parser.add_argument('--WD', default=0, type=float,
                     help='weight decay')
 parser.add_argument('--MOMENTUM', default=0, type=float,
@@ -43,38 +45,25 @@ parser.add_argument('--v', default=0, type=int, help='verbosity level (0,1,2) (d
 parser.add_argument('--port', default='12355', help='choose port for distributed run')
 
 
-def train_network(arch, dataset, epochs, batch_size, compute_flavour, seed,
-                  LR, LRD, WD, MOMENTUM, GAMMA, MILESTONES, Q_MILESTONES, Q_VALUES,
-                  device, verbose, distributed, gpus, desc, save_all_states, model_path, port):
+def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, batch_size,
+                  device, verbose, desc, save_all_states, model_path, port):
     if seed is None:
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
-    flavor_seq = ''
-    for flavor, e in zip(Q_VALUES, Q_MILESTONES):
-        flavor_seq += str(flavor) + "+" + str(e)
     name_str = '{}_{}_training_network'.format(arch, dataset)
     name_str = name_str + '_{}'.format(desc) if desc is not None else name_str
-    name_str = name_str + '_flavour_seq-{}_epochs-{}'.format(flavor_seq, epochs)
+    cfg.LOG.start_new_log(name=name_str)
 
-    assert (len(gpus) == 1 and distributed == 0) or (
-                len(gpus) > 1 and distributed == 1), 'Error in GPUs numbers in {}Distributed Mode'.format(
-        'Non-' if distributed == 0 else '')
-    gpus_num = len(gpus) if distributed == 1 else 1
-    cfg.LOG.start_new_log(name=name_str, gpus=gpus_num)
-
-    for gpu in range(gpus_num):
-        cfg.LOG.write(
-            'arch={}, dataset={}, desc={}, flavour_seq={}, epochs={}, batch_size={}, LR={}, LRD={}, WD={}, MOMENTUM={}, GAMMA={}, '
-            'MILESTONES={}, device={}, verbose={}, model_path={}'
-            .format(arch, dataset, desc, flavor_seq, epochs, batch_size, LR, LRD, WD, MOMENTUM, GAMMA, MILESTONES,
-                    device, verbose, model_path),
-            terminal=(gpu == 0), gpu_num=gpu)
-    cfg.LOG.write('Seed = {}'.format(seed), terminal=(gpu == 0), gpu_num=gpu)
-    cfg.LOG.write_title('TRAINING NETWORK', terminal=(gpu == 0), gpu_num=gpu)
-
+    cfg.LOG.write(
+        'arch={}, dataset={}, desc={}'
+        '' if not arch is 'linear' else 'batch_size={}, epochs={}, LR={}, LRD={},'
+        ' WD={}, MOMENTUM={}, GAMMA={}, device={}, verbose={}, model_path={}'
+        .format(arch, dataset, desc, epochs, LR, LRD, WD, MOMENTUM, GAMMA,
+                verbose, model_path))
+    cfg.LOG.write('Seed = {}'.format(seed))
+    cfg.LOG.write_title('TRAINING MODEL')
     # build model
-    net = NeuralNet(arch, epochs, dataset, compute_flavour, seed, LR, LRD, WD, MOMENTUM, GAMMA,
-                    MILESTONES, Q_MILESTONES, Q_VALUES,
-                    device, verbose, gpus_num, distributed, save_all_states, model_path)
+    net = NERmodel(arch, epochs, dataset, seed, LR, LRD, WD, MOMENTUM, GAMMA,
+                    verbose, save_all_states, model_path)
 
     # NORMAL TRAINING
     dataset_ = cfg.get_dataset(dataset)
@@ -98,14 +87,11 @@ def main():
     arch = args.arch.split('-')[0]
     dataset = args.arch.split('-')[1]
 
-    train_network(arch, dataset, epochs=args.epochs, batch_size=args.batch_size, compute_flavour=args.compute_flavour,
-                  seed=args.seed,
-                  LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
-                  MILESTONES=args.MILESTONES, Q_MILESTONES=args.Q_MILESTONES, Q_VALUES=args.Q_VALUES,
-                  device=args.device, verbose=args.v, distributed=args.distributed, gpus=[int(x) for x in args.gpu],
-                  desc=args.desc, save_all_states=args.save_all_states, model_path=args.model_path, port=args.port)
+    train_network(arch, dataset, epochs=args.epochs, batch_size=args.batch_size,
+                  seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
+                  device=args.device, desc=args.desc, save_all_states=args.save_all_states,
+                  model_path=args.model_path, port=args.port)
 
 
 if __name__ == '__main__':
     main()
-import gensim
