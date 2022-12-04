@@ -10,9 +10,11 @@ from torch import nn, optim
 import Config as cfg
 # from Model_StatsLogger import Model_StatsLogger
 from sklearn.svm import SVC
+from preprocessing import CustomDataset
+
 
 class NERmodel:
-    def __init__(self, arch, epochs, dataset, seed, LR, LRD, WD, MOMENTUM, GAMMA, device, verbose,
+    def __init__(self, arch, epochs, dataset, seed, LR, LRD, WD, MOMENTUM, GAMMA, device,
                  save_all_states, model_path):
         cfg.LOG.write('NeuralNet __init__: arch={}, dataset={}, epochs={},'
                       'LR={} LRD={} WD={} MOMENTUM={} GAMMA={} '
@@ -22,7 +24,6 @@ class NERmodel:
 
         self.device = torch.device('cpu')
         self.device = device
-        self.verbose = verbose
         self.LR = LR
         self.LRD = LRD
         self.WD = WD
@@ -36,7 +37,7 @@ class NERmodel:
         self.dataset = dataset
         self.criterion = nn.CrossEntropyLoss()
         self.model = cfg.MODELS[self.arch]()
-        self.model_stats = Model_StatsLogger(seed)
+        #    self.model_stats = Model_StatsLogger(seed)
         self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
         self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer, gamma=GAMMA)
         self.load_models()
@@ -145,7 +146,7 @@ class NERmodel:
         torch.save(state, path)
 
     def update_best_acc(self, epoch):
-        if epoch >= self.epochs*0.9 or self.save_all_states == 1 or epoch%10 == 0:
+        if epoch >= self.epochs * 0.9 or self.save_all_states == 1 or epoch % 10 == 0:
             top1_acc = self.model_stats.top1['test'].avg
             if top1_acc > self.model_stats.best_top1_acc:
                 self.model_stats.best_top1_acc = top1_acc
@@ -164,18 +165,18 @@ class NERmodel:
 
     def train(self):
         if self.model == 'linear':
-            #TODO implement SVM
+            # TODO implement SVM
             raise NotImplementedError
         else:
-            self.train_NN(self.epoch, dataset)
-
-
+            dataset = CustomDataset(1, )
+            train_gen = CustomDataset(1, )
+            test_gen = []
+            for epoch in range(0, self.epochs):
+                self.train_NN(epoch, train_gen)
+                self.test_set(epoch, test_gen)
 
     def train_NN(self, epoch, train_gen):
-        cfg.LOG.write_title('Training Epoch {}'.format(epoch), terminal=(gpu == 0), gpu_num=gpu)
-
-        if gpu == 0:
-            self.print_verbose('NeuralNet train() epoch={}'.format(epoch), 2)
+        cfg.LOG.write_title('Training Epoch {}'.format(epoch))
         self.reset_accuracy_logger('train')
         self.switch_to_train_mode()
 
@@ -187,11 +188,6 @@ class NERmodel:
             # measure data loading time
 
             self.log_data_time(end, 'train')
-
-            if self.device == 'cuda':
-                images = images.cuda(non_blocking=True, device=gpu)
-                target = target.cuda(non_blocking=True, device=gpu)
-
             model_out = self.compute_forward(images)
 
             model_loss = self.compute_loss(model_out, target)
@@ -211,15 +207,14 @@ class NERmodel:
             end = time.time()
 
             if i % cfg.BATCH_SIZE == 0:
-                self.print_progress(epoch, i, mode='train', gpu_num=gpu)
+                self.print_progress(epoch, i, mode='train')
 
         self.set_learning_rate()
         torch.cuda.synchronize()
         stop = timeit.default_timer()
         self.log_history(epoch, mode='train')
-        self.print_epoch_stats(epoch=epoch, mode='train', gpu_num=gpu)
-        cfg.LOG.write('Total Epoch {} Time: {:6.2f} seconds'.format(epoch, stop - start), terminal=(gpu == 0),
-                      gpu_num=gpu)
+        self.print_epoch_stats(epoch=epoch, mode='train')
+        cfg.LOG.write('Total Epoch {} Time: {:6.2f} seconds'.format(epoch, stop - start))
 
         return
 
@@ -269,4 +264,3 @@ class NERmodel:
 
             if gpu == 0:
                 self.update_best_acc(epoch)
-        return

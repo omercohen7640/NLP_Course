@@ -8,7 +8,7 @@ class Logger:
         self.path = None
         self.graph_path = []
         self.statistics_path = []
-        self.log = []
+        self.log = None
         self.terminal = sys.stdout
         self.models_path = None
 
@@ -23,7 +23,7 @@ class Logger:
             self.terminal.write(msg)
             self.terminal.flush()
 
-        if log_file :
+        if log_file and not (self.log is None):
             self.log.write(msg)
 
     def write_title(self, msg, terminal=True, log_file=True, pad_width=40, pad_symbol='-'):
@@ -63,16 +63,11 @@ class Logger:
             self.path = '{}/{}'.format(cfg.RESULTS_DIR, dir_name)
         else:
             self.path = path
-        #if not os.path.exists('{}'.format(self.path)):
-        #    os.makedirs('{}'.format(self.path))
+        # if not os.path.exists('{}'.format(self.path)):
+        #     os.makedirs('{}'.format(self.path))
         if create_logs:
             os.mkdir('{}'.format(self.path))
-
-
         dir = '{}/'.format(self.path,)
-        if create_logs:
-            os.mkdir('{}'.format(dir))
-
         graphs_path = os.path.join(dir, 'Graphs')
         if create_logs:
             os.mkdir('{}'.format(graphs_path))

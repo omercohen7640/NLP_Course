@@ -24,13 +24,24 @@ USER_CMD = None
 USER_CMD = None
 LOG = Logger()
 
+dataset_dict = {
+    'train': os.path.join(basedir, 'train.tagged'),
+    'test': os.path.join(basedir, 'test.untagged'),
+    'dev': os.path.join(basedir, 'dev.tagged'),
+}
+
+# DATASETS = DataSets(dataset_dict)
+DATASETS = DataSets()
+
+
+
 
 def get_dataset(dataset):
     if dataset == 'train':
-        return DataSets.get('train', DATASET_DIR)
+        return DataSets.datasets_dict('train')
     elif dataset == 'test':
-        return DataSets.get('test', DATASET_DIR)
+        return DataSets.datasets_dict('test')
     elif dataset == 'dev':
-        return DataSets.get('dev', DATASET_DIR)
+        return DataSets.datasets_dict('dev')
     else:
         raise NotImplementedError

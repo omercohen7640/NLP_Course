@@ -1,5 +1,7 @@
 import gensim.downloader as api
+import torch
 import numpy as np
+from torch.utils.data import Dataset
 
 
 class DataSets:
@@ -88,3 +90,54 @@ class DataSet:
     def create_windows_y_dataset(self):
         windows_y_datasets = [y for sentence in self.Y for y in sentence]
         self.Y_to_train = np.array(windows_y_datasets)
+
+class CustomDataset:
+    def __init__(self, shape, train_dataset, test_dataset):
+        # Basic Dataset Info
+        self._shape = shape
+        self._testset_size = len(train_dataset)
+        self._trainset_size = len(test_dataset)
+        self.train = train_dataset
+        self.test = test_dataset
+
+    def name(self):
+        return self.__class__.__name__
+
+    def input_channels(self):
+        return self._shape[0]
+
+    def shape(self):
+        return self._shape
+
+    def max_test_size(self):
+        return self._testset_size
+
+    def max_train_size(self):
+        return self._trainset_size
+
+    def trainset(self, batch_size, window=1):
+        return torch.utils.data.DataLoader(WindowDataset(self.train.X, self.train.Y, window_size=window), batch_size=batch_size, shuffle=True)
+
+    def testset(self, batch_size, window=1):
+        return torch.utils.data.DataLoader(WindowDataset(self.test.X, self.test.Y, window_size=window), batch_size=batch_size, shuffle=True)
+
+
+class WindowDataset(Dataset):
+    def __init__(self, inputs, outputs, window_size):
+        self.inputs = inputs
+        self.outputs = outputs
+        self.len = self.inputs.shape[0]
+        self.window = window_size
+        print(self.len)
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, idx):
+        inputs = []
+        for i in range(idx-self.window+1, idx+1):
+            if 0 <= i < self.len:
+                inputs.append(self.inputs[i])
+            else:
+                inputs.append(np.zeros(self.inputs[idx]))
+        return inputs, self.outputs[idx]

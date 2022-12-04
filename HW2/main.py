@@ -11,20 +11,23 @@ import torch
 import Config as cfg
 from model import NERmodel
 
-
 parser = argparse.ArgumentParser(description='Nimrod Admoni, nimrod216@gmail.com',
                                  formatter_class=argparse.RawTextHelpFormatter)
+
 model_names = ['linear',
                'ff',
-               'my_choice'
-               ]
+               'my_choice']
 
 encoder_types = ['glove',
                  'word2vec']
 
+dataset_dict = ['train',
+                'test',
+                'dev']
+
 parser.add_argument('-a', '--arch', metavar='ARCH', choices=model_names, required=False,
                     help='model architectures and datasets:\n' + ' | '.join(model_names))
-parser.add_argument('-d', '--dataset', metavar='DATASET', choices=model_names, required=False,
+parser.add_argument('-d', '--dataset', metavar='DATASET', choices=dataset_dict, required=False,
                     help='model dataset:\n' + ' | '.join(model_names))
 parser.add_argument('-e', '--encoder', metavar='enc', choices=encoder_types, required=False,
                     help='encoder architectures:\n' + ' | '.join(encoder_types))
@@ -53,34 +56,27 @@ parser.add_argument('--port', default='12355', help='choose port for distributed
 
 
 def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, batch_size,
-                  device, verbose, save_all_states, model_path, port):
+                  device, save_all_states, model_path, port):
     if seed is None:
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     name_str = '{}_{}_training_network'.format(arch, dataset)
-    name_str = name_str + '_{}'.format(desc) if desc is not None else name_str
-    cfg.LOG.start_new_log(name=name_str)
 
-    cfg.LOG.write(
-        'arch={}, dataset={}'
-        '' if not arch is 'linear' else 'batch_size={}, epochs={}, LR={}, LRD={},'
-        ' WD={}, MOMENTUM={}, GAMMA={}, device={}, verbose={}, model_path={}'
-        .format(arch, dataset, epochs, LR, LRD, WD, MOMENTUM, GAMMA,
-                verbose, model_path))
+    cfg.LOG.start_new_log(name=name_str)
     cfg.LOG.write('Seed = {}'.format(seed))
     cfg.LOG.write_title('TRAINING MODEL')
     # build model
-    net = NERmodel(arch, epochs, dataset, seed, LR, LRD, WD, MOMENTUM, GAMMA,
-                    verbose, save_all_states, model_path)
+    net = NERmodel(arch, epochs, dataset, seed, LR, LRD, WD, MOMENTUM, GAMMA, save_all_states, model_path)
 
     # NORMAL TRAINING
     dataset_ = cfg.get_dataset(dataset)
-    test_gen, _ = dataset_.testset(batch_size=batch_size)
-    (train_gen, _), (_, _) = dataset_.trainset(batch_size=batch_size, max_samples=None, random_seed=16)
-    net.update_batch_size(len(train_gen), len(test_gen))
-    for epoch in range(0, epochs):
-        net.train(epoch, train_gen)
-        net.test_set(epoch, test_gen)
-        net.update_flavor(epoch)
+    net.train()
+    # test_gen, _ = dataset_.testset(batch_size=batch_size)
+    # (train_gen, _), (_, _) = dataset_.trainset(batch_size=batch_size, max_samples=None, random_seed=16)
+    # net.update_batch_size(len(train_gen), len(test_gen))
+    # for epoch in range(0, epochs):
+    #     net.train(epoch, train_gen)
+    #     net.test_set(epoch, test_gen)
+    #     net.update_flavor(epoch)
     net.export_stats()
     net.plot_results()
 
@@ -96,8 +92,7 @@ def main():
 
     train_network(args.arch, args.dataset, epochs=args.epochs, batch_size=args.batch_size,
                   seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
-                  device=args.device, save_all_states=args.save_all_states,
-                  model_path=args.model_path, port=args.port)
+                  device=args.device, save_all_states=True, model_path=args.model_path, port=12345)
 
 
 if __name__ == '__main__':
