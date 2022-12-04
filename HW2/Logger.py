@@ -8,13 +8,13 @@ class Logger:
         self.path = None
         self.graph_path = []
         self.statistics_path = []
-        self.log = None
+        self.log = []
         self.terminal = sys.stdout
         self.models_path = None
 
     def write(self, msg, date=True, terminal=True, log_file=True):
-        print(msg)
-        return
+        # print(msg)
+        # return
         if date:
             curr_time = '{date:%Y-%m-%d_%H-%M-%S}'.format(date=datetime.datetime.now())
             msg = '[{}] {}'.format(curr_time, msg)
@@ -25,7 +25,7 @@ class Logger:
             self.terminal.write(msg)
             self.terminal.flush()
 
-        if log_file and not (self.log is None):
+        if log_file and len(self.log) > 0:
             self.log.write(msg)
 
     def write_title(self, msg, terminal=True, log_file=True, pad_width=40, pad_symbol='-'):
@@ -47,8 +47,9 @@ class Logger:
         self.write('', date=False)
 
     def close_log(self):
-        self.log.close()
-        self.log = None
+        if len(self.log) > 0:
+            self.log.close()
+            self.log = None
         return self.path
 
     def _update_log_file(self):
