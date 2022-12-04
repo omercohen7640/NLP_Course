@@ -13,6 +13,8 @@ class Logger:
         self.models_path = None
 
     def write(self, msg, date=True, terminal=True, log_file=True):
+        print(msg)
+        return
         if date:
             curr_time = '{date:%Y-%m-%d_%H-%M-%S}'.format(date=datetime.datetime.now())
             msg = '[{}] {}'.format(curr_time, msg)
@@ -84,3 +86,4 @@ class Logger:
 
         if create_logs:
             self.write("New results directory created @ {}".format(self.path))
+
