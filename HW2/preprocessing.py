@@ -4,13 +4,15 @@ import numpy as np
 from torch.utils.data import Dataset
 
 
-class DataSets:
-    def __int__(self, paths_dict):
+class DataSets_object:
+
+    def __init__(self, paths_dict):
         self.paths_dict = paths_dict
+        self.datasets_dict = {}
 
     def create_datsets(self):
-        for dataset_name, path in self.paths_dict():
-            self.datasets_dict[dataset_name] = DataSets(path)
+        for dataset_name, path in self.paths_dict.items():
+            self.datasets_dict[dataset_name] = DataSet(path)
 
 
 class DataSet:
@@ -18,17 +20,32 @@ class DataSet:
         self.X_vec = None
         self.embedder = None
         self.path = path
-        is_tagged = 'tagged' in path
+        is_tagged = 'untagged' not in path
         all_sentences_x = []
         all_sentences_y = []
         sentence_x = []
         sentence_y = []
-        with open(path) as f:
+        with open(path, encoding='utf-8-sig') as f:
+            c=0
             for line in f.readlines():
+                c = c+1
                 line = line[:-1] if line[-1] == '\n' else line
-                word, tag = line.split('\t')
+                if line == '':  # empty line
+                    all_sentences_x.append(sentence_x)
+                    sentence_x = []
+                    if is_tagged:
+                        all_sentences_y.append(sentence_y)
+                        sentence_y = []
+                    continue
+                if is_tagged:
+                    try:
+                        word, tag = line.split('\t')
+                    except:
+                        print('hi')
+                        print(c)
+                else:
+                    word = line
                 if word == '':
-                    assert tag == ''
                     all_sentences_x.append(sentence_x)
                     sentence_x = []
                     if is_tagged:
@@ -38,9 +55,9 @@ class DataSet:
                     if is_tagged:
                         sentence_x.append(word)
                         #TODO: change the taggig to 1 or 0
-                        sentence_y.append(tag == '0')
+                        sentence_y.append(int(tag != 'O'))
                     else:
-                        sentence_x.append(word[0])
+                        sentence_x.append(word)
         self.X = all_sentences_x
         self.Y = all_sentences_y
 

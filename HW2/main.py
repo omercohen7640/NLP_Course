@@ -58,6 +58,7 @@ parser.add_argument('--port', default='12355', help='choose port for distributed
 def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, batch_size,
                   device, save_all_states, model_path, port):
     if seed is None:
+        # seed = torch.random.initial_seed() & ((1 << 63) - 1)
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     name_str = '{}_{}_training_network'.format(arch, dataset)
 

@@ -15,7 +15,7 @@ from preprocessing import CustomDataset
 
 class NERmodel:
     def __init__(self, arch, epochs, dataset, seed, LR, LRD, WD, MOMENTUM, GAMMA, device,
-                 save_all_states, model_path):
+                 save_all_states, model_path=None):
         cfg.LOG.write('NeuralNet __init__: arch={}, dataset={}, epochs={},'
                       'LR={} LRD={} WD={} MOMENTUM={} GAMMA={} '
                       'device={} model_path={}'

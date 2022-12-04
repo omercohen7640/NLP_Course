@@ -1,7 +1,7 @@
 import os
 from Logger import Logger
-from preprocessing import DataSets
-
+# from preprocessing import DataSets_object
+import preprocessing
 
 basedir, _ = os.path.split(os.path.abspath(__file__))
 basedir = os.path.join(basedir, 'data')
@@ -30,18 +30,20 @@ dataset_dict = {
     'dev': os.path.join(basedir, 'dev.tagged'),
 }
 
-# DATASETS = DataSets(dataset_dict)
-DATASETS = DataSets()
+
+
 
 
 
 
 def get_dataset(dataset):
+    DATASETS = preprocessing.DataSets_object(paths_dict=dataset_dict)
+    DATASETS.create_datsets()
     if dataset == 'train':
-        return DataSets.datasets_dict('train')
+        return DATASETS.datasets_dict('train')
     elif dataset == 'test':
-        return DataSets.datasets_dict('test')
+        return DATASETS.datasets_dict('test')
     elif dataset == 'dev':
-        return DataSets.datasets_dict('dev')
+        return DATASETS.datasets_dict('dev')
     else:
         raise NotImplementedError
