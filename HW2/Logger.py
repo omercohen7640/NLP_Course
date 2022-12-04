@@ -26,7 +26,8 @@ class Logger:
             self.terminal.flush()
 
         if log_file and len(self.log) > 0:
-            self.log.write(msg)
+            for i in self.log:
+                i.write(msg)
 
     def write_title(self, msg, terminal=True, log_file=True, pad_width=40, pad_symbol='-'):
         self.write('', date=False)
