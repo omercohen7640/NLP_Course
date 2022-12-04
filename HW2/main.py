@@ -65,7 +65,8 @@ def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, bat
     cfg.LOG.write('Seed = {}'.format(seed))
     cfg.LOG.write_title('TRAINING MODEL')
     # build model
-    net = NERmodel(arch, epochs, dataset, seed, LR, LRD, WD, MOMENTUM, GAMMA, save_all_states, model_path)
+    dataset_ = cfg.get_dataset(dataset)
+    net = NERmodel(arch, epochs, dataset_, seed, LR, LRD, WD, MOMENTUM, GAMMA, save_all_states, model_path)
 
     # NORMAL TRAINING
     dataset_ = cfg.get_dataset(dataset)

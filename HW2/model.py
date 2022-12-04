@@ -18,8 +18,8 @@ class NERmodel:
                  save_all_states, model_path):
         cfg.LOG.write('NeuralNet __init__: arch={}, dataset={}, epochs={},'
                       'LR={} LRD={} WD={} MOMENTUM={} GAMMA={} '
-                      'device={} verbose={} model_path={}'
-                      .format(arch, dataset, epochs, LR, LRD, WD, MOMENTUM, GAMMA, device, verbose, model_path))
+                      'device={} model_path={}'
+                      .format(arch, dataset, epochs, LR, LRD, WD, MOMENTUM, GAMMA, device, model_path))
         cfg.LOG.write('Seed = {}'.format(seed))
 
         self.device = torch.device('cpu')
