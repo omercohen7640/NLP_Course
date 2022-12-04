@@ -40,15 +40,20 @@ parser.add_argument('--MOMENTUM', default=0, type=float,
                     help='momentum')
 parser.add_argument('--GAMMA', default=0.1, type=float,
                     help='gamma')
-parser.add_argument('--seed', default=42, type=int,
+parser.add_argument('--epochs', default=None, type=int,
+                    help='epochs number')
+parser.add_argument('--seed', default=None, type=int,
                     help='seed number')
+parser.add_argument('--device', default=None, type=str,
+                    help='device type')
+parser.add_argument('--window_size', default=5, type=int, help='window size')
 parser.add_argument('--model_path', default=None, help='model path to load')
 parser.add_argument('--v', default=0, type=int, help='verbosity level (0,1,2) (default:0)')
 parser.add_argument('--port', default='12355', help='choose port for distributed run')
 
 
 def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, batch_size,
-                  device, verbose, desc, save_all_states, model_path, port):
+                  device, verbose, save_all_states, model_path, port):
     if seed is None:
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     name_str = '{}_{}_training_network'.format(arch, dataset)
@@ -56,10 +61,10 @@ def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, bat
     cfg.LOG.start_new_log(name=name_str)
 
     cfg.LOG.write(
-        'arch={}, dataset={}, desc={}'
+        'arch={}, dataset={}'
         '' if not arch is 'linear' else 'batch_size={}, epochs={}, LR={}, LRD={},'
         ' WD={}, MOMENTUM={}, GAMMA={}, device={}, verbose={}, model_path={}'
-        .format(arch, dataset, desc, epochs, LR, LRD, WD, MOMENTUM, GAMMA,
+        .format(arch, dataset, epochs, LR, LRD, WD, MOMENTUM, GAMMA,
                 verbose, model_path))
     cfg.LOG.write('Seed = {}'.format(seed))
     cfg.LOG.write_title('TRAINING MODEL')
@@ -86,12 +91,12 @@ def main():
     cfg.USER_CMD = ' '.join(sys.argv)
 
     assert (args.arch is not None), "Please provide an ARCH name to execute training on"
-    arch = args.arch.split('-')[0]
-    dataset = args.arch.split('-')[1]
+    # arch = args.arch.split('-')[0]
+    # dataset = args.arch.split('-')[1]
 
-    train_network(arch, dataset, epochs=args.epochs, batch_size=args.batch_size,
+    train_network(args.arch, args.dataset, epochs=args.epochs, batch_size=args.batch_size,
                   seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
-                  device=args.device, desc=args.desc, save_all_states=args.save_all_states,
+                  device=args.device, save_all_states=args.save_all_states,
                   model_path=args.model_path, port=args.port)
 
 

@@ -53,7 +53,13 @@ class DataSet:
             
         all_sentences_x_vectorized = []
         for sentence in self.X:
-            all_sentences_x_vectorized.append(self.embedder[sentence])
+            sen = []
+            for word in sentence:
+                if self.embedder.has_index_for(word):
+                    sen.append(self.embedder[word])
+                else:
+                    sen.append(self.embedder.vector_size*[0])
+            all_sentences_x_vectorized.append(np.array(sen))
         self.X_vec = all_sentences_x_vectorized
 
     def create_windows_x_dataset(self, window_size=5):

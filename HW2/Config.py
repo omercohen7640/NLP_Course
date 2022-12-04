@@ -29,8 +29,8 @@ def get_dataset(dataset):
     if dataset == 'train':
         return DataSets.get('train', DATASET_DIR)
     elif dataset == 'test':
-        return DataSets.get('CIFAR100', DATASET_DIR)
+        return DataSets.get('test', DATASET_DIR)
     elif dataset == 'dev':
-        return DataSets.get('CIFAR100', DATASET_DIR)
+        return DataSets.get('dev', DATASET_DIR)
     else:
         raise NotImplementedError

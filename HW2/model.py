@@ -5,11 +5,11 @@ import torch
 import random
 import time
 import timeit
-from tabulate import tabulate
+# from tabulate import tabulate
 from torch import nn, optim
 import Config as cfg
-from Model_StatsLogger import Model_StatsLogger
-
+# from Model_StatsLogger import Model_StatsLogger
+from sklearn.svm import SVC
 
 class NERmodel:
     def __init__(self, arch, epochs, dataset, seed, LR, LRD, WD, MOMENTUM, GAMMA, device, verbose,
