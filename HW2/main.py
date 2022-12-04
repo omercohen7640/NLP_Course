@@ -61,7 +61,7 @@ def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, bat
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     name_str = '{}_{}_training_network'.format(arch, dataset)
 
-    cfg.LOG.start_new_log(name=name_str)
+    #cfg.LOG.start_new_log(name=name_str)
     cfg.LOG.write('Seed = {}'.format(seed))
     cfg.LOG.write_title('TRAINING MODEL')
     # build model
