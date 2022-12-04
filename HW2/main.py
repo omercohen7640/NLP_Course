@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description='Nimrod Admoni, nimrod216@gmail.com
 
 model_names = ['linear',
                'ff',
-               'my_choice']
+               'custom']
 
 encoder_types = ['glove',
                  'word2vec']

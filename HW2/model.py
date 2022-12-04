@@ -5,6 +5,8 @@ import torch
 import random
 import time
 import timeit
+
+from pip._internal.utils.misc import tabulate
 # from tabulate import tabulate
 from torch import nn, optim
 import Config as cfg
@@ -22,8 +24,13 @@ class NERmodel:
                       .format(arch, dataset, epochs, LR, LRD, WD, MOMENTUM, GAMMA, device, model_path))
         cfg.LOG.write('Seed = {}'.format(seed))
 
-        self.device = torch.device('cpu')
-        self.device = device
+        if device == 'cpu':
+            self.device = torch.device('cpu')
+        elif device == 'cuda' and torch.cuda.is_available():
+            self.device = torch.device('cuda')
+        else:
+            self.device = torch.device('cpu')
+            cfg.LOG.write('WARNING: Found no valid GPU device - Running on CPU')
         self.LR = LR
         self.LRD = LRD
         self.WD = WD
@@ -33,14 +40,15 @@ class NERmodel:
         self.save_all_states = save_all_states
         torch.manual_seed(seed)
         random.seed(seed)
-        self.arch = '{}_{}'.format(arch, dataset)
+        self.arch = arch
         self.dataset = dataset
-        self.criterion = nn.CrossEntropyLoss()
-        self.model = cfg.MODELS[self.arch]()
         #    self.model_stats = Model_StatsLogger(seed)
-        self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
-        self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer, gamma=GAMMA)
-        self.load_models()
+        if arch is not 'linear':
+            self.model = cfg.MODELS[self.arch]()
+            self.criterion = nn.CrossEntropyLoss()
+            self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
+            self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer, gamma=GAMMA)
+            self.load_models()
 
     def load_models(self, gpu=0, disributed=0):
         if self.model_path is not None:
@@ -188,6 +196,10 @@ class NERmodel:
             # measure data loading time
 
             self.log_data_time(end, 'train')
+            if self.device == 'cuda':
+                images = images.cuda(non_blocking=True, device=self.device)
+                target = target.cuda(non_blocking=True, device=self.device)
+
             model_out = self.compute_forward(images)
 
             model_loss = self.compute_loss(model_out, target)
