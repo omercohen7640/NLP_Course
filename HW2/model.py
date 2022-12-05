@@ -12,6 +12,7 @@ from torch import nn, optim
 import Config as cfg
 # from Model_StatsLogger import Model_StatsLogger
 from sklearn.svm import SVC
+from sklearn.metrics import f1_score
 from preprocessing import CustomDataset
 
 
@@ -43,7 +44,7 @@ class NERmodel:
         self.arch = arch
         self.dataset = dataset
         #    self.model_stats = Model_StatsLogger(seed)
-        if arch is not 'linear':
+        if arch != 'linear':
             self.model = cfg.MODELS[self.arch]()
             self.criterion = nn.CrossEntropyLoss()
             self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
@@ -172,9 +173,12 @@ class NERmodel:
         self.model_stats.plot_results(gpu=gpu)
 
     def train(self):
-        if self.model == 'linear':
-            # TODO implement SVM
-            raise NotImplementedError
+        if self.arch == 'linear':
+            clf = SVC()
+            clf.fit(self.dataset.datasets_dict['train'].X_vec_to_train, self.dataset.datasets_dict['train'].Y_to_train)
+            y_pred=clf.predict(self.dataset.datasets_dict['dev'].X_vec_to_train)
+            f1 = f1_score(self.dataset.datasets_dict['dev'].Y_to_train, y_pred)
+            print(f'f1 score is {f1}')
         else:
             dataset = CustomDataset(1, )
             train_gen = CustomDataset(1, )

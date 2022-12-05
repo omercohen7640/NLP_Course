@@ -56,7 +56,7 @@ parser.add_argument('--port', default='12355', help='choose port for distributed
 
 
 def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, batch_size,
-                  device, save_all_states, model_path, port):
+                  device, save_all_states, model_path, port, embedder):
     if seed is None:
         # seed = torch.random.initial_seed() & ((1 << 63) - 1)
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
@@ -66,11 +66,10 @@ def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, bat
     cfg.LOG.write('Seed = {}'.format(seed))
     cfg.LOG.write_title('TRAINING MODEL')
     # build model
-    dataset_ = cfg.get_dataset(dataset)
+    dataset_ = cfg.get_dataset(embedder)
     net = NERmodel(arch, epochs, dataset_, seed, LR, LRD, WD, MOMENTUM, GAMMA, save_all_states, model_path)
 
     # NORMAL TRAINING
-    dataset_ = cfg.get_dataset(dataset)
     net.train()
     # test_gen, _ = dataset_.testset(batch_size=batch_size)
     # (train_gen, _), (_, _) = dataset_.trainset(batch_size=batch_size, max_samples=None, random_seed=16)
@@ -94,7 +93,7 @@ def main():
 
     train_network(args.arch, args.dataset, epochs=args.epochs, batch_size=args.batch_size,
                   seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
-                  device=args.device, save_all_states=True, model_path=args.model_path, port=12345)
+                  device=args.device, save_all_states=True, model_path=args.model_path, port=12345, embedder=args.encoder)
 
 
 if __name__ == '__main__':

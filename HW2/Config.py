@@ -8,11 +8,13 @@ from collections import OrderedDict
 basedir, _ = os.path.split(os.path.abspath(__file__))
 basedir = os.path.join(basedir, 'data')
 
+
 # ------------------------------------------------
 #                   Directories
 # ------------------------------------------------
 RESULTS_DIR = os.path.join(basedir, 'results')
 DATASET_DIR = os.path.join(basedir, 'data')
+
 
 # ------------------------------------------------
 #                Init and Defines
@@ -22,7 +24,7 @@ USER_CMD = None
 #                Init and Defines
 # ------------------------------------------------
 USER_CMD = None
-WINDOW_SIZE = 5
+
 LOG = Logger()
 
 dataset_dict = {
@@ -30,9 +32,6 @@ dataset_dict = {
     'test': os.path.join(basedir, 'test.untagged'),
     'dev': os.path.join(basedir, 'dev.tagged'),
 }
-
-DATASETS = preprocessing.DataSets_object(paths_dict=dataset_dict)
-DATASETS.create_datsets()
 
 
 def create_ff():
@@ -57,12 +56,7 @@ MODELS = {
 }
 
 
-def get_dataset(dataset):
-    if dataset == 'train':
-        return DATASETS.datasets_dict['train']
-    elif dataset == 'test':
-        return DATASETS.datasets_dict['test']
-    elif dataset == 'dev':
-        return DATASETS.datasets_dict['dev']
-    else:
-        raise NotImplementedError
+def get_dataset(embedder):
+    DATASETS = preprocessing.DataSets(paths_dict=dataset_dict)
+    DATASETS.create_datsets(embedder)
+    return DATASETS
