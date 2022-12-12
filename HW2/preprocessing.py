@@ -2,18 +2,48 @@ import gensim.downloader as api
 import torch
 import numpy as np
 from torch.utils.data import Dataset
+import string
+import re
+with open('emoji_file.txt', encoding='utf-8') as f:
+    lines = f.readlines()
+emoji_list = [em[0] for em in lines]
+DAYS = []
+WINDOW_SIZE = 0
+
+def parse(word):
+    if word in emoji_list:
+        return 'emoji'
+    elif word[0] == '$':
+        return 'amount'
+    elif len(word) == 1 and word in string.punctuation:
+        return ''
+    elif word[0] == '@':
+        return 'username'
+    elif word[:4] == 'http':
+        return 'website'
+    elif re.search(r'([1-2][0-9][0-9][0-9])',word): # word is a year
+        return 'year'
+    elif re.search(r'([0-9]+)',word):# word is a number
+        return 'number'
+    else:
+        return word
+
+
+
 import Config as cfg
 
 WINDOW_SIZE = 1
 class DataSets:
 
-    def __init__(self, paths_dict):
+    def __init__(self, paths_dict, parsing=False):
         self.paths_dict = paths_dict
         self.datasets_dict = {}
 
-    def create_datsets(self, embedder):
+
+
+    def create_datsets(self, embedder, parsing=False):
         for dataset_name, path in self.paths_dict.items():
-            self.datasets_dict[dataset_name] = DataSet(path)
+            self.datasets_dict[dataset_name] = DataSet(path, parsing)
             self.datasets_dict[dataset_name].embed_words(embedder)
             self.datasets_dict[dataset_name].create_windows_x_dataset(WINDOW_SIZE)
             if "untagged" not in path:
@@ -22,17 +52,19 @@ class DataSets:
 
 
 class DataSet:
-    def __init__(self, path):
+    def __init__(self, path, parsing=False):
         self.X_vec = None
         self.embedder = None
+        self.deleted_word_index = None
         self.path = path
         is_tagged = 'untagged' not in path
         all_sentences_x = []
         all_sentences_y = []
         sentence_x = []
         sentence_y = []
+        deleted_word_index = []
         with open(path, encoding='utf-8-sig') as f:
-            c = 0
+            c = -1
             for line in f.readlines():
                 c = c+1
                 line = line[:-1] if line[-1] == '\n' else line
@@ -54,14 +86,19 @@ class DataSet:
                         all_sentences_y.append(sentence_y)
                         sentence_y = []
                 else:
+                    if parsing:
+                        word_p = parse(word)
+                        if word_p != word:
+                            deleted_word_index.append(c)
+                            continue
                     if is_tagged:
                         sentence_x.append(word)
-                        #TODO: change the taggig to 1 or 0
                         sentence_y.append(int(tag != 'O'))
                     else:
                         sentence_x.append(word)
         self.X = all_sentences_x
         self.Y = all_sentences_y
+        self.deleted_word_index = deleted_word_index
         self.len = None
 
     def __len__(self):

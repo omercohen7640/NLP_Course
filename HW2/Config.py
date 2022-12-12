@@ -8,7 +8,6 @@ from collections import OrderedDict
 basedir, _ = os.path.split(os.path.abspath(__file__))
 basedir = os.path.join(basedir, 'data')
 
-
 # ------------------------------------------------
 #                   Directories
 # ------------------------------------------------
