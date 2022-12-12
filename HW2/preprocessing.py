@@ -62,9 +62,11 @@ class DataSet:
                         sentence_x.append(word)
         self.X = all_sentences_x
         self.Y = all_sentences_y
-        self.len = self.X_vec_to_train.shape[0]
+        self.len = None
 
     def __len__(self):
+        if self.len is None:
+            self.len = self.X_vec_to_train.shape[0]
         return self.len
 
     def embed_words(self, embedder):

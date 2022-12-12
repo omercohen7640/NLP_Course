@@ -54,8 +54,8 @@ class NERmodel:
             class_weights = torch.FloatTensor(weights)
             self.criterion = nn.CrossEntropyLoss(weight=class_weights)
             self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
-            # self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer, gamma=GAMMA)
-            self.model_train_scheduler = optim.lr_scheduler.ConstantLR(self.model_optimizer)
+            self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer,milestones=[20, 40], gamma=GAMMA)
+            # self.model_train_scheduler = optim.lr_scheduler.ConstantLR(self.model_optimizer)
             self.load_models()
 
     def load_models(self, gpu=0, disributed=0):

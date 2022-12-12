@@ -77,15 +77,15 @@ def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, bat
     cfg.LOG.write_title('TRAINING MODEL')
     # build model
     dataset_ = cfg.get_dataset(embedder)
-    # print(cfg.UNKNOWN_WORDS)
-    net = NERmodel(arch, epochs, dataset_, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
-                   device, save_all_states, batch_size, model_path)
+    print(cfg.UNKNOWN_WORDS)
+    # net = NERmodel(arch, epochs, dataset_, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
+    #                device, save_all_states, batch_size, model_path)
 
-    # NORMAL TRAINING
-    tagging = net.train()
-    # in comp mode write tagging file
-    if tagging is not None:
-        write_comp_file(tagging,dataset_)
+    ## NORMAL TRAINING
+    # tagging = net.train()
+    ## in comp mode write tagging file
+    # if tagging is not None:
+    #    write_comp_file(tagging,dataset_)
 
 
 
