@@ -5,7 +5,7 @@ import random
 
 import matplotlib
 from time import time
-
+from preprocessing import WINDOW_SIZE
 matplotlib.use('Agg')
 import torch
 import Config as cfg
@@ -49,14 +49,24 @@ parser.add_argument('--seed', default=None, type=int,
                     help='seed number')
 parser.add_argument('--device', default=None, type=str,
                     help='device type')
-parser.add_argument('--window_size', default=5, type=int, help='window size')
+parser.add_argument('--test_set', default='dev',type=str, choices=['dev', 'test'],
+                    help='choose what test dataset to use')
+parser.add_argument('--window_size', default=1, type=int, help='window size')
 parser.add_argument('--model_path', default=None, help='model path to load')
 parser.add_argument('--v', default=0, type=int, help='verbosity level (0,1,2) (default:0)')
 parser.add_argument('--port', default='12355', help='choose port for distributed run')
 
+def write_comp_file(tagging, dataset):
+    name = '' # FIXME add file name
+    f = open(name, 'w+')
+    for i in range(len(dataset_dict['test'])):
+        line = ''
+    raise NotImplementedError
+
+
 
 def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, batch_size,
-                  device, save_all_states, model_path, port, embedder):
+                  device, save_all_states, model_path, test_set, port, embedder):
     if seed is None:
         # seed = torch.random.initial_seed() & ((1 << 63) - 1)
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
@@ -67,19 +77,16 @@ def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, bat
     cfg.LOG.write_title('TRAINING MODEL')
     # build model
     dataset_ = cfg.get_dataset(embedder)
-    net = NERmodel(arch, epochs, dataset_, seed, LR, LRD, WD, MOMENTUM, GAMMA, save_all_states, model_path)
+    # print(cfg.UNKNOWN_WORDS)
+    net = NERmodel(arch, epochs, dataset_, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
+                   device, save_all_states, batch_size, model_path)
 
     # NORMAL TRAINING
-    net.train()
-    # test_gen, _ = dataset_.testset(batch_size=batch_size)
-    # (train_gen, _), (_, _) = dataset_.trainset(batch_size=batch_size, max_samples=None, random_seed=16)
-    # net.update_batch_size(len(train_gen), len(test_gen))
-    # for epoch in range(0, epochs):
-    #     net.train(epoch, train_gen)
-    #     net.test_set(epoch, test_gen)
-    #     net.update_flavor(epoch)
-    net.export_stats()
-    net.plot_results()
+    tagging = net.train()
+    # in comp mode write tagging file
+    if tagging is not None:
+        write_comp_file(tagging,dataset_)
+
 
 
 def main():
@@ -90,10 +97,11 @@ def main():
     assert (args.arch is not None), "Please provide an ARCH name to execute training on"
     # arch = args.arch.split('-')[0]
     # dataset = args.arch.split('-')[1]
-
+    # WINDOW_SIZE = args.window_size
     train_network(args.arch, args.dataset, epochs=args.epochs, batch_size=args.batch_size,
                   seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
-                  device=args.device, save_all_states=True, model_path=args.model_path, port=12345, embedder=args.encoder)
+                  device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set,
+                  port=12345, embedder=args.encoder)
 
 
 if __name__ == '__main__':

@@ -30,6 +30,9 @@ def parse(word):
 
 
 
+import Config as cfg
+
+WINDOW_SIZE = 1
 class DataSets:
 
     def __init__(self, paths_dict, parsing=False):
@@ -45,6 +48,7 @@ class DataSets:
             self.datasets_dict[dataset_name].create_windows_x_dataset(WINDOW_SIZE)
             if "untagged" not in path:
                 self.datasets_dict[dataset_name].create_windows_y_dataset()
+
 
 
 class DataSet:
@@ -113,6 +117,7 @@ class DataSet:
                 if self.embedder.has_index_for(word.lower()):
                     sen.append(self.embedder[word.lower()])
                 else:
+                    cfg.UNKNOWN_WORDS.add(word)
                     sen.append(np.array(self.embedder.vector_size*[0]))
             all_sentences_x_vectorized.append(np.array(sen))
         self.X_vec = all_sentences_x_vectorized
@@ -145,7 +150,7 @@ class DataSet:
         windows_y_datasets = [y for sentence in self.Y for y in sentence]
         self.Y_to_train = np.array(windows_y_datasets)
 
-class CustomDataset:
+class NNDataset:
     def __init__(self, shape, train_dataset, test_dataset):
         # Basic Dataset Info
         self._shape = shape
@@ -169,29 +174,23 @@ class CustomDataset:
     def max_train_size(self):
         return self._trainset_size
 
-    def trainset(self, batch_size, window=1):
-        return torch.utils.data.DataLoader(WindowDataset(self.train.X, self.train.Y, window_size=window), batch_size=batch_size, shuffle=True)
+    def trainset(self, batch_size):
+        return torch.utils.data.DataLoader(dataset=CustomDataset(self.train.X_vec_to_train, self.train.Y_to_train),
+                                           batch_size=batch_size, shuffle=True)
 
-    def testset(self, batch_size, window=1):
-        return torch.utils.data.DataLoader(WindowDataset(self.test.X, self.test.Y, window_size=window), batch_size=batch_size, shuffle=True)
+    def testset(self, batch_size):
+        return torch.utils.data.DataLoader(dataset=CustomDataset(self.test.X_vec_to_train, self.test.Y_to_train),
+                                           batch_size=batch_size, shuffle=True)
 
 
-class WindowDataset(Dataset):
-    def __init__(self, inputs, outputs, window_size):
-        self.inputs = inputs
-        self.outputs = outputs
-        self.len = self.inputs.shape[0]
-        self.window = window_size
-        print(self.len)
+class CustomDataset(Dataset):
+    def __init__(self, inputs, outputs, transform=None, target_transform=None):
+        self.inputs = np.array(inputs, dtype=np.float32)
+        self.outputs = np.array(outputs, dtype=np.float32)
+        self.len = len(self.inputs)
 
     def __len__(self):
         return self.len
 
     def __getitem__(self, idx):
-        inputs = []
-        for i in range(idx-self.window+1, idx+1):
-            if 0 <= i < self.len:
-                inputs.append(self.inputs[i])
-            else:
-                inputs.append(np.zeros(self.inputs[idx]))
-        return inputs, self.outputs[idx]
+        return self.inputs[idx], self.outputs[idx]
