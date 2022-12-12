@@ -5,20 +5,20 @@ import torch
 import random
 import time
 import timeit
-
-from pip._internal.utils.misc import tabulate
-# from tabulate import tabulate
+from torchmetrics.classification import BinaryF1Score
+#from pip._internal.utils.misc import tabulate
+from tabulate import tabulate
 from torch import nn, optim
 import Config as cfg
-# from Model_StatsLogger import Model_StatsLogger
+from StatsLogger import Model_StatsLogger
 from sklearn.svm import SVC
 from sklearn.metrics import f1_score
-from preprocessing import CustomDataset
+from preprocessing import NNDataset
 
 
 class NERmodel:
-    def __init__(self, arch, epochs, dataset, seed, LR, LRD, WD, MOMENTUM, GAMMA, device,
-                 save_all_states, model_path=None):
+    def __init__(self, arch, epochs, dataset, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
+                 device, save_all_states, batch_size=32, model_path=None):
         cfg.LOG.write('NeuralNet __init__: arch={}, dataset={}, epochs={},'
                       'LR={} LRD={} WD={} MOMENTUM={} GAMMA={} '
                       'device={} model_path={}'
@@ -37,18 +37,24 @@ class NERmodel:
         self.WD = WD
         self.MOMENTUM = MOMENTUM
         self.GAMMA = GAMMA
+        self.epochs = epochs
         self.model_path = model_path
         self.save_all_states = save_all_states
+        self.batch_size = batch_size
         torch.manual_seed(seed)
         random.seed(seed)
         self.arch = arch
         self.dataset = dataset
-        #    self.model_stats = Model_StatsLogger(seed)
+        self.test_set = test_set
+        self.model_stats = Model_StatsLogger(seed, 2)
         if arch != 'linear':
             self.model = cfg.MODELS[self.arch]()
-            self.criterion = nn.CrossEntropyLoss()
+            weights = [0.1, 1.0]
+            class_weights = torch.FloatTensor(weights)
+            self.criterion = nn.CrossEntropyLoss(weight=class_weights)
             self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
-            self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer, gamma=GAMMA)
+            # self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer, gamma=GAMMA)
+            self.model_train_scheduler = optim.lr_scheduler.ConstantLR(self.model_optimizer)
             self.load_models()
 
     def load_models(self, gpu=0, disributed=0):
@@ -115,8 +121,8 @@ class NERmodel:
     def compute_step(self):
         self.model_optimizer.step()
 
-    def print_progress(self, epoch, batch, mode, gpu_num):
-        self.model_stats.progress[mode].print(' {} Compute flavour conv'.format(self.model_stats.compute_flavour),
+    def print_progress(self, epoch, batch, mode, gpu_num=0):
+        self.model_stats.progress[mode].print('Compute flavour conv',
                                               epoch, batch, gpu_num)
 
     def log_history(self, epoch, mode='train'):
@@ -132,7 +138,7 @@ class NERmodel:
 
         stats_headers = ["Conv", "Avg. Loss", "Avg. Acc1", "Avg. Acc5"]
         stats = []
-        stats.append(("{} Compute flavour conv".format(self.model_stats.compute_flavour),
+        stats.append(("Compute flavour conv",
                       self.model_stats.losses[mode].getAverage(),
                       self.model_stats.top1[mode].getAverage(),
                       self.model_stats.top5[mode].getAverage()))
@@ -162,7 +168,7 @@ class NERmodel:
                 self.model_stats.best_top1_epoch = epoch
                 self._save_state(epoch=epoch, best_top1_acc=top1_acc.item(), model=self.model,
                                  optimizer=self.model_optimizer, scheduler=self.model_train_scheduler,
-                                 desc='{}_Compute_flavour_Conv'.format(self.model_stats.compute_flavour))
+                                 desc='Compute_flavour_Conv')
 
     def export_stats(self, gpu=0):
         # export stats results
@@ -176,16 +182,19 @@ class NERmodel:
         if self.arch == 'linear':
             clf = SVC()
             clf.fit(self.dataset.datasets_dict['train'].X_vec_to_train, self.dataset.datasets_dict['train'].Y_to_train)
-            y_pred=clf.predict(self.dataset.datasets_dict['dev'].X_vec_to_train)
-            f1 = f1_score(self.dataset.datasets_dict['dev'].Y_to_train, y_pred)
+            y_pred = clf.predict(self.dataset.datasets_dict[self.test_set].X_vec_to_train)
+            f1 = f1_score(self.dataset.datasets_dict[self.test_set].Y_to_train, y_pred)
             print(f'f1 score is {f1}')
         else:
-            dataset = CustomDataset(1, )
-            train_gen = CustomDataset(1, )
-            test_gen = []
+            if self.epochs is None:
+                cfg.LOG.write("epochs argument missing")
+                return
+            dataset = NNDataset(1, self.dataset.datasets_dict['train'], self.dataset.datasets_dict[self.test_set])
+            train_gen = dataset.trainset(self.batch_size)
+            test_gen = dataset.testset(self.batch_size)
             for epoch in range(0, self.epochs):
                 self.train_NN(epoch, train_gen)
-                self.test_set(epoch, test_gen)
+                self.test_NN(epoch, test_gen)
 
     def train_NN(self, epoch, train_gen):
         cfg.LOG.write_title('Training Epoch {}'.format(epoch))
@@ -193,9 +202,11 @@ class NERmodel:
         self.switch_to_train_mode()
 
         end = time.time()
-        torch.cuda.synchronize()
+        if self.device == 'cude':
+            torch.cuda.synchronize()
         start = timeit.default_timer()
-
+        epoch_output = []
+        y_true = []
         for i, (images, target) in enumerate(train_gen):
             # measure data loading time
 
@@ -206,10 +217,18 @@ class NERmodel:
 
             model_out = self.compute_forward(images)
 
-            model_loss = self.compute_loss(model_out, target)
+            one_hot_target = np.zeros((len(target), 2))
+            for idxj, j in enumerate(target):
+                one_hot_target[idxj, int(j.item())] = 1
+
+            _, pred = model_out.topk(max((1, 1)), 1, True, True)
+            epoch_output += [int(i.item()) for i in pred]
+            y_true += [int(i.item()) for i in target]
+
+            model_loss = self.compute_loss(model_out, torch.tensor(one_hot_target))
 
             # measure accuracy and record logs
-            self.measure_accuracy_log(model_out, model_loss, target, images.size(0), topk=(1, 5), mode='train')
+            self.measure_accuracy_log(model_out, model_loss, target, images.size(0), topk=(1, 1), mode='train')
 
             # compute gradient and do SGD step
             self.zero_gradients()
@@ -222,11 +241,14 @@ class NERmodel:
 
             end = time.time()
 
-            if i % cfg.BATCH_SIZE == 0:
+            if i % (self.batch_size*10) == 0:
                 self.print_progress(epoch, i, mode='train')
 
-        self.set_learning_rate()
-        torch.cuda.synchronize()
+        f1 = f1_score(epoch_output, y_true)
+        print(f'f1 score is {f1}')
+        #self.set_learning_rate()
+        if self.device == 'cude':
+            torch.cuda.synchronize()
         stop = timeit.default_timer()
         self.log_history(epoch, mode='train')
         self.print_epoch_stats(epoch=epoch, mode='train')
@@ -234,18 +256,20 @@ class NERmodel:
 
         return
 
-    def test_set(self, epoch, test_gen, gpu=0):
-        cfg.LOG.write_title('Testing Epoch {}'.format(epoch), terminal=(gpu == 0), gpu_num=gpu)
+    def test_NN(self, epoch, test_gen, gpu=0):
+        cfg.LOG.write_title('Testing Epoch {}'.format(epoch))
 
-        if gpu == 0:
-            self.print_verbose('NeuralNet test_set() epoch={}'.format(epoch), 2)
         self.reset_accuracy_logger('test')
         self.switch_to_test_mode()
 
         with torch.no_grad():
             end = time.time()
-            torch.cuda.synchronize()
+            if self.device == 'cude':
+                torch.cuda.synchronize()
             start = timeit.default_timer()
+
+            epoch_output = []
+            y_true = []
 
             for i, (images, target) in enumerate(test_gen):
 
@@ -255,28 +279,38 @@ class NERmodel:
                     images = images.cuda(non_blocking=True, device=gpu)
                     target = target.cuda(non_blocking=True, device=gpu)
 
+                one_hot_target = np.zeros((len(target), 2))
+                for idxj, j in enumerate(target):
+                    one_hot_target[idxj, int(j.item())] = 1
+
                 model_out = self.compute_forward(images)
 
-                model_loss = self.compute_loss(model_out, target)
+                _, pred = model_out.topk(max((1, 1)), 1, True, True)
+                epoch_output += [int(i.item()) for i in pred]
+                y_true += [int(i.item()) for i in target]
+
+                model_loss = self.compute_loss(model_out, torch.tensor(one_hot_target))
 
                 # measure accuracy and record logs
-                self.measure_accuracy_log(model_out, model_loss, target, images.size(0), topk=(1, 5), mode='test')
+                self.measure_accuracy_log(model_out, model_loss, target, images.size(0), topk=(1, 1), mode='test')
 
                 # measure elapsed time
                 self.log_batch_time(end, mode='test')
 
                 end = time.time()
 
-                if i % cfg.BATCH_SIZE == 0:
-                    self.print_progress(epoch, i, mode='test', gpu_num=gpu)
+                if i % (self.batch_size*10) == 0:
+                    self.print_progress(epoch, i, mode='test')
 
-            torch.cuda.synchronize()
+            f1 = f1_score(epoch_output, y_true)
+            print(f'f1 score is {f1}')
+            if self.device == 'cude':
+                torch.cuda.synchronize()
             stop = timeit.default_timer()
             self.log_history(epoch, mode='test')
 
-            self.print_epoch_stats(epoch=epoch, mode='test', gpu_num=gpu)
-            cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start), terminal=(gpu == 0),
-                          gpu_num=gpu)
+            self.print_epoch_stats(epoch=epoch, mode='test')
+            cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))
 
             if gpu == 0:
                 self.update_best_acc(epoch)

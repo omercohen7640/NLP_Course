@@ -1,5 +1,5 @@
 import os
-from Logger import Logger
+from Logger import *
 # from preprocessing import DataSets_object
 import preprocessing
 import torch.nn as nn
@@ -36,13 +36,13 @@ dataset_dict = {
 
 def create_ff():
     model = nn.Sequential(OrderedDict([
-        ('L1', nn.Linear(WINDOW_SIZE*10, 4096)),
+        ('L1', nn.Linear(preprocessing.WINDOW_SIZE*200 if preprocessing.WINDOW_SIZE != 0 else 200, 1024)),
         ('relu1', nn.ReLU()),
-        ('L2', nn.Linear(4096, 4096)),
-        ('relu2', nn.ReLU()),
-        ('L3', nn.Linear(4096, 4096)),
+        #('L2', nn.Linear(1024, 1024)),
+        #('relu2', nn.ReLU()),
+        ('L3', nn.Linear(1024, 1024)),
         ('relu3', nn.ReLU()),
-        ('L4', nn.Linear(4096, 2000))]))
+        ('L4', nn.Linear(1024, 2))]))
     return model
 
 
