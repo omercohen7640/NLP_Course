@@ -88,14 +88,16 @@ class DataSet:
                 else:
                     if parsing:
                         word_p = parse(word)
-                        if word_p != word:
+                        if word_p == '':
                             deleted_word_index.append(c)
                             continue
+                        word = word_p
                     if is_tagged:
                         sentence_x.append(word)
                         sentence_y.append(int(tag != 'O'))
                     else:
                         sentence_x.append(word)
+        self.num_of_words = c
         self.X = all_sentences_x
         self.Y = all_sentences_y
         self.deleted_word_index = deleted_word_index

@@ -77,7 +77,9 @@ def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, bat
     cfg.LOG.write_title('TRAINING MODEL')
     # build model
     dataset_ = cfg.get_dataset(embedder)
-    print(cfg.UNKNOWN_WORDS)
+    f = open('./weird_words.txt', 'w+')
+    f.write(str(cfg.UNKNOWN_WORDS))
+    f.close()
     # net = NERmodel(arch, epochs, dataset_, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
     #                device, save_all_states, batch_size, model_path)
 

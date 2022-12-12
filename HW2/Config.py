@@ -38,14 +38,22 @@ def create_ff():
     model = nn.Sequential(OrderedDict([
         ('L1', nn.Linear(preprocessing.WINDOW_SIZE*200 if preprocessing.WINDOW_SIZE != 0 else 200, 1024)),
         ('relu1', nn.ReLU()),
-        ('L3', nn.Linear(1024, 1024)),
+        ('L2', nn.Linear(1024, 1024)),
         ('relu3', nn.ReLU()),
-        ('L4', nn.Linear(1024, 2))]))
+        ('L3', nn.Linear(1024, 2))]))
     return model
 
 
 def create_custom():
-    raise NotImplementedError
+    model = nn.Sequential(OrderedDict([
+        ('L1', nn.Linear(preprocessing.WINDOW_SIZE * 200 if preprocessing.WINDOW_SIZE != 0 else 200, 2048)),
+        ('relu1', nn.ReLU()),
+        ('L2', nn.Linear(2048, 2048)),
+        ('relu3', nn.ReLU()),
+        ('L3', nn.Linear(2048, 512)),
+        ('relu4', nn.ReLU()),
+        ('L4', nn.Linear(512, 2))]))
+    return model
 
 
 MODELS = {
