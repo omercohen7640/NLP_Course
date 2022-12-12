@@ -48,6 +48,7 @@ class NERmodel:
         self.test_set = test_set
         self.model_stats = Model_StatsLogger(seed, 2)
         if arch != 'linear':
+            self.max_f1 = 0
             self.model = cfg.MODELS[self.arch]()
             weights = [0.1, 1.0]
             class_weights = torch.FloatTensor(weights)
@@ -195,6 +196,9 @@ class NERmodel:
             for epoch in range(0, self.epochs):
                 self.train_NN(epoch, train_gen)
                 self.test_NN(epoch, test_gen)
+            if self.arch == 'custom':
+                return self.tag_test(self.dataset.datasets_dict['test'])
+            return None
 
     def train_NN(self, epoch, train_gen):
         cfg.LOG.write_title('Training Epoch {}'.format(epoch))
@@ -311,6 +315,17 @@ class NERmodel:
 
             self.print_epoch_stats(epoch=epoch, mode='test')
             cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))
-
+            if self.max_f1 < f1:
+                self.save_all_states(epoch)
             if gpu == 0:
                 self.update_best_acc(epoch)
+
+    def tag_test(self, dataset):
+        with torch.no_grad():
+            tagging = []
+            for i, word in enumerate(dataset):
+
+                model_out = self.compute_forward(word)
+                _, pred = model_out.topk(max((1, 1)), 1, True, True)
+                tagging += pred
+        return tagging

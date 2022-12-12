@@ -2,7 +2,7 @@ import gensim.downloader as api
 import torch
 import numpy as np
 from torch.utils.data import Dataset
-import Config
+import Config as cfg
 
 WINDOW_SIZE = 1
 class DataSets:
@@ -62,7 +62,7 @@ class DataSet:
                         sentence_x.append(word)
         self.X = all_sentences_x
         self.Y = all_sentences_y
-        self.len = len(self.Y)
+        self.len = self.X_vec_to_train.shape[0]
 
     def __len__(self):
         return self.len
@@ -83,6 +83,7 @@ class DataSet:
                 if self.embedder.has_index_for(word.lower()):
                     sen.append(self.embedder[word.lower()])
                 else:
+                    cfg.UNKNOWN_WORDS.add(word)
                     sen.append(np.array(self.embedder.vector_size*[0]))
             all_sentences_x_vectorized.append(np.array(sen))
         self.X_vec = all_sentences_x_vectorized

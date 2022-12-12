@@ -26,6 +26,7 @@ USER_CMD = None
 USER_CMD = None
 
 LOG = Logger()
+UNKNOWN_WORDS = set()
 
 dataset_dict = {
     'train': os.path.join(basedir, 'train.tagged'),
@@ -38,8 +39,6 @@ def create_ff():
     model = nn.Sequential(OrderedDict([
         ('L1', nn.Linear(preprocessing.WINDOW_SIZE*200 if preprocessing.WINDOW_SIZE != 0 else 200, 1024)),
         ('relu1', nn.ReLU()),
-        #('L2', nn.Linear(1024, 1024)),
-        #('relu2', nn.ReLU()),
         ('L3', nn.Linear(1024, 1024)),
         ('relu3', nn.ReLU()),
         ('L4', nn.Linear(1024, 2))]))
