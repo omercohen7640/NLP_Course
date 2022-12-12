@@ -1,4 +1,5 @@
 import gensim.downloader as api
+from gensim.parsing.preprocessing import RE_PUNCT
 import torch
 import numpy as np
 from torch.utils.data import Dataset
@@ -7,12 +8,27 @@ import re
 with open('emoji_file.txt', encoding='utf-8') as f:
     lines = f.readlines()
 emoji_list = [em[0] for em in lines]
-DAYS = []
 WINDOW_SIZE = 0
+DAYS = ['sunday', 'monday', 'thursday', 'wednesday', 'tuesday', 'friday', 'saturday']
+MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november',
+          'december']
+def is_only_punct(word):
+    for l in word:
+        if l not in string.punctuation:
+            return False
+    return True
+
+def contain_punct(word):
+    for l in word:
+        if l in string.punctuation:
+            return True
+    return False
 
 def parse(word):
     if word in emoji_list:
         return 'emoji'
+    elif word[0] == '#':
+        return 'hashtag'
     elif word[0] == '$':
         return 'amount'
     elif len(word) == 1 and word in string.punctuation:
@@ -23,8 +39,18 @@ def parse(word):
         return 'website'
     elif re.search(r'([1-2][0-9][0-9][0-9])',word): # word is a year
         return 'year'
+    elif re.search(r'([0-9]+):([0-9]+)',word): # word is a year
+        return 'year'
     elif re.search(r'([0-9]+)',word):# word is a number
         return 'number'
+    elif word.lower() in DAYS:
+        return 'day'
+    elif is_only_punct(word):
+        return ''
+    elif contain_punct(word):
+        return RE_PUNCT.sub('',word)
+    elif word.lower() in MONTHS:
+        return 'month'
     else:
         return word
 
