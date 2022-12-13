@@ -82,7 +82,7 @@ def write_comp_file(tagging, dataset):
                 tag = '1'
                 if tagging[tagging_index] == 0:
                     tag = 'O'
-                f.write('{}\t{}'.format(word, tag))
+                f.write('{}\t{}\n'.format(word, tag))
                 tagging_index += 1
     f.close()
 

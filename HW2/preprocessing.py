@@ -104,6 +104,7 @@ class DataSet:
                     continue
                 if is_tagged:
                     word, tag = line.split('\t')
+                    self.original_words.append(word)
                 else:
                     word = line
                     self.original_words.append(word)
