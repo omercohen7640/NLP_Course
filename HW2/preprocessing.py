@@ -5,18 +5,23 @@ import numpy as np
 from torch.utils.data import Dataset
 import string
 import re
+import Config as cfg
+
 with open('emoji_file.txt', encoding='utf-8') as f:
     lines = f.readlines()
 emoji_list = [em[0] for em in lines]
-WINDOW_SIZE = 0
+WINDOW_SIZE = 1
 DAYS = ['sunday', 'monday', 'thursday', 'wednesday', 'tuesday', 'friday', 'saturday']
 MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november',
-          'december']
+          'december', 'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'nov', 'oct', 'dec']
+
+
 def is_only_punct(word):
     for l in word:
         if l not in string.punctuation:
             return False
     return True
+
 
 def contain_punct(word):
     for l in word:
@@ -24,10 +29,9 @@ def contain_punct(word):
             return True
     return False
 
+
 def parse(word):
-    if word in emoji_list:
-        return 'emoji'
-    elif word[0] == '#':
+    if word[0] == '#':
         return 'hashtag'
     elif word[0] == '$':
         return 'amount'
@@ -37,35 +41,31 @@ def parse(word):
         return 'username'
     elif word[:4] == 'http':
         return 'website'
-    elif re.search(r'([1-2][0-9][0-9][0-9])',word): # word is a year
+    elif re.search(r'([1-2][0-9][0-9][0-9])', word):  # word is a year
         return 'year'
-    elif re.search(r'([0-9]+):([0-9]+)',word): # word is a year
+    elif re.search(r'([0-9]+):([0-9]+)', word):  # word is a year
         return 'year'
-    elif re.search(r'([0-9]+)',word):# word is a number
+    elif re.search(r'([0-9]+$)', word):  # word is a number
         return 'number'
     elif word.lower() in DAYS:
         return 'day'
     elif is_only_punct(word):
         return ''
     elif contain_punct(word):
-        return RE_PUNCT.sub('',word)
+        return RE_PUNCT.sub('', word)
     elif word.lower() in MONTHS:
         return 'month'
+    elif word in emoji_list:
+        return 'emoji'
     else:
         return word
 
 
-
-import Config as cfg
-
-WINDOW_SIZE = 1
 class DataSets:
 
-    def __init__(self, paths_dict, parsing=False):
+    def __init__(self, paths_dict):
         self.paths_dict = paths_dict
         self.datasets_dict = {}
-
-
 
     def create_datsets(self, embedder, parsing=False):
         for dataset_name, path in self.paths_dict.items():
@@ -74,7 +74,6 @@ class DataSets:
             self.datasets_dict[dataset_name].create_windows_x_dataset(WINDOW_SIZE)
             if "untagged" not in path:
                 self.datasets_dict[dataset_name].create_windows_y_dataset()
-
 
 
 class DataSet:
@@ -91,10 +90,12 @@ class DataSet:
         deleted_word_index = []
         with open(path, encoding='utf-8-sig') as f:
             c = -1
+            self.original_words = []
             for line in f.readlines():
-                c = c+1
+                c = c + 1
                 line = line[:-1] if line[-1] == '\n' else line
                 if line == '':  # empty line
+                    self.original_words.append('')
                     all_sentences_x.append(sentence_x)
                     sentence_x = []
                     if is_tagged:
@@ -105,6 +106,7 @@ class DataSet:
                     word, tag = line.split('\t')
                 else:
                     word = line
+                    self.original_words.append(word)
                 if word == '':
                     all_sentences_x.append(sentence_x)
                     sentence_x = []
@@ -142,7 +144,7 @@ class DataSet:
         else:
             print(f'{embedder} is not a familier embedder')
             raise NotImplemented
-            
+
         all_sentences_x_vectorized = []
         for sentence in self.X:
             sen = []
@@ -151,30 +153,31 @@ class DataSet:
                     sen.append(self.embedder[word.lower()])
                 else:
                     cfg.UNKNOWN_WORDS.add(word)
-                    sen.append(np.array(self.embedder.vector_size*[0]))
+                    sen.append(np.array(self.embedder.vector_size * [0]))
             all_sentences_x_vectorized.append(np.array(sen))
         self.X_vec = all_sentences_x_vectorized
 
     def create_windows_x_dataset(self, window_size=WINDOW_SIZE):
-        n_side = int(window_size/2)
+        n_side = int(window_size / 2)
         x_features = []
         for i, vector_sentence in enumerate(self.X_vec):
             for j in range(vector_sentence.shape[0]):
-                if j-n_side < 0:
-                    left_vecs = np.zeros((n_side-j)*self.embedder.vector_size)
+                if j - n_side < 0:
+                    left_vecs = np.zeros((n_side - j) * self.embedder.vector_size)
                     if j > 0:
-                        left_vecs = np.concatenate((left_vecs, vector_sentence[:j,:].flatten()))
+                        left_vecs = np.concatenate((left_vecs, vector_sentence[:j, :].flatten()))
                 else:
-                    left_vecs = vector_sentence[j-n_side:j, :].flatten()
+                    left_vecs = vector_sentence[j - n_side:j, :].flatten()
                 middle_vec = vector_sentence[j, :]
-                if j+n_side > vector_sentence.shape[0]-1:
-                    if j+1 == vector_sentence.shape[0]:  # the last word
-                        right_vecs = np.zeros((n_side)*self.embedder.vector_size)
+                if j + n_side > vector_sentence.shape[0] - 1:
+                    if j + 1 == vector_sentence.shape[0]:  # the last word
+                        right_vecs = np.zeros((n_side) * self.embedder.vector_size)
                     else:
-                        right_vecs = vector_sentence[j+1:, :].flatten()
-                        right_vecs = np.concatenate((right_vecs, np.zeros((j+1+n_side - vector_sentence.shape[0])*self.embedder.vector_size)))
+                        right_vecs = vector_sentence[j + 1:, :].flatten()
+                        right_vecs = np.concatenate((right_vecs, np.zeros(
+                            (j + 1 + n_side - vector_sentence.shape[0]) * self.embedder.vector_size)))
                 else:
-                    right_vecs = vector_sentence[j+1:j+1+n_side].flatten()
+                    right_vecs = vector_sentence[j + 1:j + 1 + n_side].flatten()
                 vec_to_append = np.concatenate((left_vecs, middle_vec, right_vecs))
                 x_features.append(vec_to_append)
         self.X_vec_to_train = np.array(x_features)
@@ -182,6 +185,7 @@ class DataSet:
     def create_windows_y_dataset(self):
         windows_y_datasets = [y for sentence in self.Y for y in sentence]
         self.Y_to_train = np.array(windows_y_datasets)
+
 
 class NNDataset:
     def __init__(self, shape, train_dataset, test_dataset):

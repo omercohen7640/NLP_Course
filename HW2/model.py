@@ -161,15 +161,12 @@ class NERmodel:
 
         torch.save(state, path)
 
-    def update_best_acc(self, epoch):
-        if epoch >= self.epochs * 0.9 or self.save_all_states == 1 or epoch % 10 == 0:
-            top1_acc = self.model_stats.top1['test'].avg
-            if top1_acc > self.model_stats.best_top1_acc:
-                self.model_stats.best_top1_acc = top1_acc
-                self.model_stats.best_top1_epoch = epoch
-                self._save_state(epoch=epoch, best_top1_acc=top1_acc.item(), model=self.model,
-                                 optimizer=self.model_optimizer, scheduler=self.model_train_scheduler,
-                                 desc='Compute_flavour_Conv')
+    def update_best_acc(self, epoch, f1_acc):
+        self.model_stats.best_top1_acc = f1_acc
+        self.model_stats.best_top1_epoch = epoch
+        self._save_state(epoch=epoch, best_top1_acc=f1_acc, model=self.model,
+                         optimizer=self.model_optimizer, scheduler=self.model_train_scheduler,
+                         desc='Compute_flavour_Conv')
 
     def export_stats(self, gpu=0):
         # export stats results
@@ -196,9 +193,6 @@ class NERmodel:
             for epoch in range(0, self.epochs):
                 self.train_NN(epoch, train_gen)
                 self.test_NN(epoch, test_gen)
-            if self.arch == 'custom':
-                return self.tag_test(self.dataset.datasets_dict['test'])
-            return None
 
     def train_NN(self, epoch, train_gen):
         cfg.LOG.write_title('Training Epoch {}'.format(epoch))
@@ -260,7 +254,7 @@ class NERmodel:
 
         return
 
-    def test_NN(self, epoch, test_gen, gpu=0):
+    def test_NN(self, epoch, test_gen, gpu=0, save=True):
         cfg.LOG.write_title('Testing Epoch {}'.format(epoch))
 
         self.reset_accuracy_logger('test')
@@ -315,17 +309,18 @@ class NERmodel:
 
             self.print_epoch_stats(epoch=epoch, mode='test')
             cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))
-            if self.max_f1 < f1:
-                self.save_all_states(epoch)
-            if gpu == 0:
-                self.update_best_acc(epoch)
+            if self.max_f1 < f1 and save:
+                self.update_best_acc(epoch, f1)
 
-    def tag_test(self, dataset):
+    def tag_test(self):
+
+        dataset = torch.tensor(self.dataset.datasets_dict['dev'].X_vec_to_train, dtype=torch.float32)
+        self.test_NN(0, NNDataset(1, self.dataset.datasets_dict['train'], self.dataset.datasets_dict[self.test_set]).testset(self.batch_size))
         with torch.no_grad():
             tagging = []
             for i, word in enumerate(dataset):
 
                 model_out = self.compute_forward(word)
-                _, pred = model_out.topk(max((1, 1)), 1, True, True)
-                tagging += pred
+                _, pred = model_out.topk(1, 0, True, True)
+                tagging += [int(i.item()) for i in pred]
         return tagging

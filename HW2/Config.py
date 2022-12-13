@@ -14,7 +14,6 @@ basedir = os.path.join(basedir, 'data')
 RESULTS_DIR = os.path.join(basedir, 'results')
 DATASET_DIR = os.path.join(basedir, 'data')
 
-
 # ------------------------------------------------
 #                Init and Defines
 # ------------------------------------------------
@@ -36,7 +35,7 @@ dataset_dict = {
 
 def create_ff():
     model = nn.Sequential(OrderedDict([
-        ('L1', nn.Linear(preprocessing.WINDOW_SIZE*200 if preprocessing.WINDOW_SIZE != 0 else 200, 1024)),
+        ('L1', nn.Linear(preprocessing.WINDOW_SIZE * 200 if preprocessing.WINDOW_SIZE != 0 else 200, 1024)),
         ('relu1', nn.ReLU()),
         ('L2', nn.Linear(1024, 1024)),
         ('relu3', nn.ReLU()),
@@ -62,7 +61,10 @@ MODELS = {
 }
 
 
-def get_dataset(embedder):
+def get_dataset(embedder, arch):
+    parse = False
+    if arch == 'custom':
+        parse = True
     DATASETS = preprocessing.DataSets(paths_dict=dataset_dict)
-    DATASETS.create_datsets(embedder)
+    DATASETS.create_datsets(embedder=embedder, parsing=parse)
     return DATASETS
