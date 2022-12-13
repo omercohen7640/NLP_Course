@@ -60,24 +60,26 @@ parser.add_argument('--port', default='12355', help='choose port for distributed
 
 
 def get_word(dataset, index):
-    return dataset.datasets_dict['test'].original_words[index]
+    return dataset.datasets_dict['dev'].original_words[index]
 
 
 def write_comp_file(tagging, dataset):
     name = './dev_203860721_308427128.tagged'
-    assert (name != '')
     f = open(name, 'w+')
     untagged_words = dataset.datasets_dict['dev'].deleted_word_index
+    empty_lines = dataset.datasets_dict['dev'].empty_lines
     assert (dataset.datasets_dict['dev'].num_of_words >= len(tagging))
 
     tagging_index = 0
-    for i in range(dataset.datasets_dict['dev'].num_of_words + 1):
+    for i in range(dataset.datasets_dict['dev'].num_of_words):
         word = get_word(dataset, i)
         if word == '' or word == '\t':
             f.write(word + '\n')
         else:
             if i in untagged_words:
                 f.write('{}\t{}\n'.format(word, 'O'))
+            elif i in empty_lines:
+                f.write('{}\n'.format(word))
             else:
                 tag = '1'
                 if tagging[tagging_index] == 0:

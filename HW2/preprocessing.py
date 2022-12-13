@@ -11,6 +11,7 @@ with open('emoji_file.txt', encoding='utf-8') as f:
     lines = f.readlines()
 emoji_list = [em[0] for em in lines]
 WINDOW_SIZE = 1
+VEC_SIZE = None
 DAYS = ['sunday', 'monday', 'thursday', 'wednesday', 'tuesday', 'friday', 'saturday']
 MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november',
           'december', 'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'nov', 'oct', 'dec']
@@ -88,12 +89,15 @@ class DataSet:
         sentence_x = []
         sentence_y = []
         deleted_word_index = []
+        self.empty_lines = []
         with open(path, encoding='utf-8-sig') as f:
             c = -1
             self.original_words = []
             for line in f.readlines():
                 line = line[:-1] if line[-1] == '\n' else line
                 if line == '':  # empty line
+                    c = c + 1
+                    self.empty_lines.append(c)
                     self.original_words.append('')
                     all_sentences_x.append(sentence_x)
                     sentence_x = []
@@ -103,11 +107,12 @@ class DataSet:
                     continue
                 if is_tagged:
                     word, tag = line.split('\t')
-                    self.original_words.append(word)
                 else:
                     word = line
-                    self.original_words.append(word)
                 if word == '':
+                    self.original_words.append('\t')
+                    c = c + 1
+                    self.empty_lines.append(c)
                     all_sentences_x.append(sentence_x)
                     sentence_x = []
                     if is_tagged:
@@ -115,6 +120,7 @@ class DataSet:
                         sentence_y = []
                 else:
                     c = c + 1
+                    self.original_words.append(word)
                     if parsing:
                         word_p = parse(word)
                         if word_p == '':
@@ -126,6 +132,12 @@ class DataSet:
                         sentence_y.append(int(tag != 'O'))
                     else:
                         sentence_x.append(word)
+        if sentence_x != []:
+            c += 1
+            all_sentences_x.append(sentence_x)
+            if is_tagged:
+                all_sentences_y.append(sentence_y)
+            self.empty_lines.append(c)
         self.num_of_words = c
         self.X = all_sentences_x
         self.Y = all_sentences_y
@@ -157,6 +169,8 @@ class DataSet:
                     sen.append(np.array(self.embedder.vector_size * [0]))
             all_sentences_x_vectorized.append(np.array(sen))
         self.X_vec = all_sentences_x_vectorized
+
+
 
     def create_windows_x_dataset(self, window_size=WINDOW_SIZE):
         n_side = int(window_size / 2)

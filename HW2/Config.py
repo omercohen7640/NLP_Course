@@ -34,8 +34,9 @@ dataset_dict = {
 
 
 def create_ff():
+    assert(preprocessing.VEC_SIZE is not None)
     model = nn.Sequential(OrderedDict([
-        ('L1', nn.Linear(preprocessing.WINDOW_SIZE * 200 if preprocessing.WINDOW_SIZE != 0 else 200, 1024)),
+        ('L1', nn.Linear(preprocessing.WINDOW_SIZE * preprocessing.VEC_SIZE, 1024)),
         ('relu1', nn.ReLU()),
         ('L2', nn.Linear(1024, 1024)),
         ('relu3', nn.ReLU()),
@@ -44,8 +45,9 @@ def create_ff():
 
 
 def create_custom():
+    assert(preprocessing.VEC_SIZE is not None)
     model = nn.Sequential(OrderedDict([
-        ('L1', nn.Linear(preprocessing.WINDOW_SIZE * 200 if preprocessing.WINDOW_SIZE != 0 else 200, 2048)),
+        ('L1', nn.Linear(preprocessing.WINDOW_SIZE * preprocessing.VEC_SIZE, 2048)),
         ('relu1', nn.ReLU()),
         ('L2', nn.Linear(2048, 2048)),
         ('relu3', nn.ReLU()),
@@ -67,4 +69,5 @@ def get_dataset(embedder, arch):
         parse = True
     DATASETS = preprocessing.DataSets(paths_dict=dataset_dict)
     DATASETS.create_datsets(embedder=embedder, parsing=parse)
+    preprocessing.VEC_SIZE = DATASETS.datasets_dict['train'].X_vec_to_train.shape[1]
     return DATASETS
