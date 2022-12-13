@@ -92,7 +92,6 @@ class DataSet:
             c = -1
             self.original_words = []
             for line in f.readlines():
-                c = c + 1
                 line = line[:-1] if line[-1] == '\n' else line
                 if line == '':  # empty line
                     self.original_words.append('')
@@ -114,6 +113,7 @@ class DataSet:
                         all_sentences_y.append(sentence_y)
                         sentence_y = []
                 else:
+                    c = c + 1
                     if parsing:
                         word_p = parse(word)
                         if word_p == '':
