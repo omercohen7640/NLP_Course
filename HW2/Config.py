@@ -4,6 +4,8 @@ from Logger import *
 import preprocessing
 import torch.nn as nn
 from collections import OrderedDict
+import pickle
+import os
 
 basedir, _ = os.path.split(os.path.abspath(__file__))
 basedir = os.path.join(basedir, 'data')
@@ -65,9 +67,17 @@ MODELS = {
 
 def get_dataset(embedder, arch):
     parse = False
+    dataset_path = './data/datasets.pickle'
     if arch == 'custom':
         parse = True
-    DATASETS = preprocessing.DataSets(paths_dict=dataset_dict)
-    DATASETS.create_datsets(embedder=embedder, parsing=parse)
+    # os.path.exists('{}'.format(self.path))
+    if  os.path.exists('{}'.format(dataset_path)):
+        with open(dataset_path,'rb') as f:
+            DATASETS = pickle.load(f)
+    else:
+        DATASETS = preprocessing.DataSets(paths_dict=dataset_dict)
+        DATASETS.create_datsets(embedder=embedder, parsing=parse)
+        with open(dataset_path, 'wb+') as f:
+            pickle.dump(DATASETS, f)
     preprocessing.VEC_SIZE = DATASETS.datasets_dict['train'].X_vec_to_train.shape[1]
     return DATASETS
