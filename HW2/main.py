@@ -96,7 +96,7 @@ def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, bat
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     name_str = '{}_{}_training_network'.format(arch, dataset)
 
-    cfg.LOG.start_new_log(name=name_str)
+
     cfg.LOG.write('Seed = {}'.format(seed))
     cfg.LOG.write_title('TRAINING MODEL')
     # build model
@@ -144,6 +144,7 @@ def objective(trial):
     return f1
 
 def parameter_search():
+    cfg.LOG.start_new_log(name='parameter_search')
     study = optuna.create_study(sampler=optuna.samplers.RandomSampler())
     study.optimize(objective,n_trials=30)
 
