@@ -177,12 +177,14 @@ class NERmodel:
         self.model_stats.plot_results(gpu=gpu)
 
     def train(self):
+        lastf1 = 0
         if self.arch == 'linear':
             clf = SVC()
             clf.fit(self.dataset.datasets_dict['train'].X_vec_to_train, self.dataset.datasets_dict['train'].Y_to_train)
             y_pred = clf.predict(self.dataset.datasets_dict[self.test_set].X_vec_to_train)
             f1 = f1_score(self.dataset.datasets_dict[self.test_set].Y_to_train, y_pred)
             print(f'f1 score is {f1}')
+            lastf1 = f1
         else:
             if self.epochs is None:
                 cfg.LOG.write("epochs argument missing")
@@ -190,9 +192,12 @@ class NERmodel:
             dataset = NNDataset(1, self.dataset.datasets_dict['train'], self.dataset.datasets_dict[self.test_set])
             train_gen = dataset.trainset(self.batch_size)
             test_gen = dataset.testset(self.batch_size)
+
             for epoch in range(0, self.epochs):
                 self.train_NN(epoch, train_gen)
-                self.test_NN(epoch, test_gen)
+                lastf1=self.test_NN(epoch, test_gen)
+        return lastf1
+
 
     def train_NN(self, epoch, train_gen):
         cfg.LOG.write_title('Training Epoch {}'.format(epoch))
@@ -311,6 +316,7 @@ class NERmodel:
             cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))
             if self.max_f1 < f1 and save:
                 self.update_best_acc(epoch, f1)
+            return f1
 
     def tag_test(self):
 

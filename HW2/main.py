@@ -11,7 +11,7 @@ matplotlib.use('Agg')
 import torch
 import Config as cfg
 from model import NERmodel
-
+import optuna
 parser = argparse.ArgumentParser(description='Nimrod Admoni, nimrod216@gmail.com',
                                  formatter_class=argparse.RawTextHelpFormatter)
 
@@ -106,15 +106,15 @@ def train_network(arch, dataset, epochs, seed, LR, LRD, WD, MOMENTUM, GAMMA, bat
     # f.close()
     net = NERmodel(arch, epochs, dataset_, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
                    device, save_all_states, batch_size, model_path)
-
+    f1 = 0
     # NORMAL TRAINING
     if not tag_only:
-        net.train()
+        f1 = net.train()
     tagging = net.tag_test()
     # in comp mode write tagging file
-    if tagging is not None:
-        write_comp_file(tagging, dataset_)
-
+    # if tagging is not None:
+        # write_comp_file(tagging, dataset_)
+    return f1
 
 def main():
     args = parser.parse_args()
@@ -129,5 +129,24 @@ def main():
                   port=12345, embedder=args.encoder, tag_only=args.tag_only)
 
 
+
+
+def objective(trial):
+    ephocs = trial.suggest_int('ephocs', low=10, high=50)
+    batch_size =  trial.suggest_int('batch_size', low=3, high=8)
+    lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
+    wd_size = trial.suggest_int('wd_size', low=1, high=5)
+    print(f'ephocs={ephocs}, batch size={2**batch_size}, lr={lr}, wd_size={wd_size}')
+    f1 =train_network('custom', 'train', epochs=ephocs, batch_size=2**batch_size,
+                  seed=None, LR=lr, LRD=0, WD=wd_size, MOMENTUM=0, GAMMA=0.1,
+                  device=None, save_all_states=True, model_path=None, test_set='dev',
+                  port=12345, embedder='glove', tag_only=0)
+    return f1
+
+def parameter_search():
+    study = optuna.create_study(sampler=optuna.samplers.RandomSampler())
+    study.optimize(objective,n_trials=30)
+
+
 if __name__ == '__main__':
-    main()
+    parameter_search()
