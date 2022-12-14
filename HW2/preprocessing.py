@@ -1,3 +1,5 @@
+import os
+
 import gensim.downloader as api
 from gensim.parsing.preprocessing import RE_PUNCT
 import torch
@@ -6,8 +8,7 @@ from torch.utils.data import Dataset
 import string
 import re
 import Config as cfg
-
-with open('emoji_file.txt', encoding='utf-8') as f:
+with open('./emoji_file.txt', encoding='utf-8') as f:
     lines = f.readlines()
 emoji_list = [em[0] for em in lines]
 WINDOW_SIZE = 1
