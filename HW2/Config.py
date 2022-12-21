@@ -65,13 +65,13 @@ MODELS = {
 }
 
 
-def get_dataset(embedder, arch, window_size):
+def get_dataset(embedder, arch, WD_size):
     parse = False
-    dataset_path = './data/datasets_{}.pickle'.format(window_size)
+    dataset_path = f'./data/datasets_{WD_size}.pickle'
     if arch == 'custom':
         parse = True
-    preprocessing.WINDOW_SIZE = window_size
-    if os.path.exists('{}'.format(dataset_path)):
+    # os.path.exists('{}'.format(self.path))
+    if  os.path.exists('{}'.format(dataset_path)):
         with open(dataset_path,'rb') as f:
             DATASETS = pickle.load(f)
     else:
