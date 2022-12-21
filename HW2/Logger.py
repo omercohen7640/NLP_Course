@@ -64,7 +64,7 @@ class Logger:
             if name is not None:
                 dir_name = dir_name + name + '_'
             dir_name = dir_name + '{date:%Y-%m-%d_%H-%M-%S}'.format(date=datetime.datetime.now())
-            self.path = '{}/{}'.format(cfg.RESULTS_DIR, dir_name)
+            self.path = '{}'.format(dir_name)
         else:
             self.path = path
         # if not os.path.exists('{}'.format(self.path)):

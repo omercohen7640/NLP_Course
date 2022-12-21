@@ -61,7 +61,7 @@ class NERmodel:
     def load_models(self, gpu=0, disributed=0):
         if self.model_path is not None:
             if os.path.isfile(self.model_path):
-                chkp = torch.load(self.model_path)
+                chkp = torch.load(self.model_path, map_location=self.device)
             else:
                 assert 0, 'Error: Cannot find model path {}'.format(self.model_path)
             assert (self.arch == chkp['arch'])
@@ -320,8 +320,8 @@ class NERmodel:
 
     def tag_test(self):
 
-        dataset = torch.tensor(self.dataset.datasets_dict['dev'].X_vec_to_train, dtype=torch.float32)
-        self.test_NN(0, NNDataset(1, self.dataset.datasets_dict['train'], self.dataset.datasets_dict[self.test_set]).testset(self.batch_size))
+        dataset = torch.tensor(self.dataset.datasets_dict['test'].X_vec_to_train, dtype=torch.float32)
+        #self.test_NN(0, NNDataset(1, self.dataset.datasets_dict['train'], self.dataset.datasets_dict[self.test_set]).testset(self.batch_size))
         with torch.no_grad():
             tagging = []
             for i, word in enumerate(dataset):

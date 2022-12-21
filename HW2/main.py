@@ -52,7 +52,7 @@ parser.add_argument('--device', default=None, type=str,
                     help='device type')
 parser.add_argument('--test_set', default='dev', type=str, choices=['dev', 'test'],
                     help='choose what test dataset to use')
-parser.add_argument('--window_size', default=1, type=int, help='window size')
+parser.add_argument('--wd_size', default=1, type=int, help='window size')
 parser.add_argument('--model_path', default=None, help='model path to load')
 parser.add_argument('--tag_only', default=0, type=int, help='do not run train, only tagging')
 parser.add_argument('--v', default=0, type=int, help='verbosity level (0,1,2) (default:0)')
@@ -64,7 +64,7 @@ def get_word(dataset, index):
 
 
 def write_comp_file(tagging, dataset):
-    name = './test_203860721_308427128.tagged'
+    name = './comp_203860721_308427128_old.tagged'
     f = open(name, 'w+')
     untagged_words = dataset.datasets_dict['test'].deleted_word_index
     empty_lines = dataset.datasets_dict['test'].empty_lines
@@ -122,7 +122,7 @@ def main():
     cfg.USER_CMD = ' '.join(sys.argv)
 
     assert (args.arch is not None), "Please provide an ARCH name to execute training on"
-    preprocessing.WINDOW_SIZE = args.window_size
+    preprocessing.WINDOW_SIZE = args.wd_size
     train_network(args.arch, args.dataset, epochs=args.epochs, batch_size=args.batch_size,
                   seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
                   device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set,

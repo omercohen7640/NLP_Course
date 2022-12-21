@@ -38,7 +38,7 @@ dataset_dict = {
 def create_ff():
     assert(preprocessing.VEC_SIZE is not None)
     model = nn.Sequential(OrderedDict([
-        ('L1', nn.Linear(preprocessing.WINDOW_SIZE * preprocessing.VEC_SIZE, 1024)),
+        ('L1', nn.Linear(preprocessing.VEC_SIZE, 1024)),
         ('relu1', nn.ReLU()),
         ('L2', nn.Linear(1024, 1024)),
         ('relu3', nn.ReLU()),
@@ -49,7 +49,7 @@ def create_ff():
 def create_custom():
     assert(preprocessing.VEC_SIZE is not None)
     model = nn.Sequential(OrderedDict([
-        ('L1', nn.Linear(preprocessing.WINDOW_SIZE * preprocessing.VEC_SIZE, 2048)),
+        ('L1', nn.Linear(preprocessing.VEC_SIZE, 2048)),
         ('relu1', nn.ReLU()),
         ('L2', nn.Linear(2048, 2048)),
         ('relu3', nn.ReLU()),
