@@ -65,9 +65,9 @@ MODELS = {
 }
 
 
-def get_dataset(embedder, arch):
+def get_dataset(embedder, arch, WD_size):
     parse = False
-    dataset_path = './data/datasets.pickle'
+    dataset_path = f'./data/datasets_{WD_size}.pickle'
     if arch == 'custom':
         parse = True
     # os.path.exists('{}'.format(self.path))
