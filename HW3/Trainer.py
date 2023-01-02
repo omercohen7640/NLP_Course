@@ -8,15 +8,16 @@ from tabulate import tabulate
 from torch import nn, optim
 import Config as cfg
 #from preprocessing import NNDataset
-
+from models import GraphLoss
+from StatsLogger import Model_StatsLogger
 
 class NNTrainer:
-    def __init__(self, arch, epochs, dataset, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
+    def __init__(self, model, epochs, dataset, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
                  device, save_all_states, batch_size=32, model_path=None):
-        cfg.LOG.write('NeuralNet __init__: arch={}, dataset={}, epochs={},'
+        cfg.LOG.write('NeuralNet __init__: test_set={}, epochs={},'
                       'LR={} LRD={} WD={} MOMENTUM={} GAMMA={} '
                       'device={} model_path={}'
-                      .format(arch, dataset, epochs, LR, LRD, WD, MOMENTUM, GAMMA, device, model_path))
+                      .format(test_set, epochs, LR, LRD, WD, MOMENTUM, GAMMA, device, model_path))
         cfg.LOG.write('Seed = {}'.format(seed))
 
         if device == 'cpu':
@@ -37,11 +38,11 @@ class NNTrainer:
         self.batch_size = batch_size
         torch.manual_seed(seed)
         random.seed(seed)
-        self.arch = arch
+        self.model_stats = Model_StatsLogger(seed, 2)
         self.dataset = dataset
         self.test_set = test_set
-        self.model = cfg.MODELS[self.arch]()
-        self.criterion = nn.CrossEntropyLoss()
+        self.model = model
+        self.criterion = GraphLoss()
         self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
         self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer,milestones=[20, 40], gamma=GAMMA)
         self.load_models()
@@ -66,6 +67,18 @@ class NNTrainer:
     def print_verbose(self, msg, v):
         if self.verbose >= v:
             cfg.LOG.write(msg)
+
+    def print_progress(self, epoch, batch, mode, gpu_num=0):
+        self.model_stats.progress[mode].print('Compute flavour conv',
+                                              epoch, batch, gpu_num)
+    def log_data_time(self, end, mode):
+        # switch to train mode
+        self.model_stats.data_time[mode].update(time.time() - end)
+
+    def log_batch_time(self, end, mode):
+        # switch to train mode
+        self.model_stats.batch_time[mode].update(time.time() - end)
+
 
     def switch_to_train_mode(self):
         # switch to train mode
@@ -121,19 +134,21 @@ class NNTrainer:
         # plot results for each convolution
         self.model_stats.plot_results(gpu=gpu)
 
+    def reset_accuracy_logger(self, mode):
+        self.model_stats.losses[mode].reset()
+        self.model_stats.top1[mode].reset()
+        self.model_stats.top5[mode].reset()
+
     def train(self):
         if self.epochs is None:
             cfg.LOG.write("epochs argument missing")
             return
-        print("Dataset not Implemented")
-        raise NotImplementedError
-        dataset = NNDataset(1, self.dataset.datasets_dict['train'], self.dataset.datasets_dict[self.test_set])
-        train_gen = dataset.trainset(self.batch_size)
-        test_gen = dataset.testset(self.batch_size)
+        train_gen = self.dataset.datasets_dict['train'].data_loader
+        test_gen = self.dataset.datasets_dict[self.test_set].data_loader
 
         for epoch in range(0, self.epochs):
             self.train_NN(epoch, train_gen)
-            lastf1=self.test_NN(epoch, test_gen)
+            self.test_NN(epoch, test_gen)
 
 
     def train_NN(self, epoch, train_gen):
@@ -157,15 +172,7 @@ class NNTrainer:
 
             model_out = self.compute_forward(images)
 
-            one_hot_target = np.zeros((len(target), 2))
-            for idxj, j in enumerate(target):
-                one_hot_target[idxj, int(j.item())] = 1
-
-            _, pred = model_out.topk(max((1, 1)), 1, True, True)
-            epoch_output += [int(i.item()) for i in pred]
-            y_true += [int(i.item()) for i in target]
-
-            model_loss = self.compute_loss(model_out, torch.tensor(one_hot_target))
+            model_loss = self.compute_loss(model_out, target)
 
             # measure accuracy and record logs
             self.measure_accuracy_log(model_out, model_loss, target, images.size(0), topk=(1, 1), mode='train')
@@ -213,19 +220,11 @@ class NNTrainer:
                     images = images.cuda(non_blocking=True, device=gpu)
                     target = target.cuda(non_blocking=True, device=gpu)
 
-                one_hot_target = np.zeros((len(target), 2))
-                for idxj, j in enumerate(target):
-                    one_hot_target[idxj, int(j.item())] = 1
 
                 model_out = self.compute_forward(images)
 
-                _, pred = model_out.topk(max((1, 1)), 1, True, True)
-                epoch_output += [int(i.item()) for i in pred]
-                y_true += [int(i.item()) for i in target]
-
-                model_loss = self.compute_loss(model_out, torch.tensor(one_hot_target))
-
                 # measure accuracy and record logs
+                self.measure_accuracy_log(model_out, model_loss, target, images.size(0), topk=(1, 1), mode='train')
 
                 # measure elapsed time
 

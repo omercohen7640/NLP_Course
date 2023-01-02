@@ -1,26 +1,54 @@
-from torch import nn
+import torch.nn
+from torch import nn, Tensor
+from torch.nn import functional as F
 from chu_liu_edmonds import decode_mst
 
+
 class DependencyParser(nn.Module):
-    def __init__(self, *args):
+    def __init__(self, embedding_dim, POS_dim, no_concate=True, num_layers=2):
         super(DependencyParser, self).__init__()
-        self.word_embedding = # Implement embedding layer for words (can be new or pretr
-        self.hidden_dim = self.word_embedding.embedding_dim
-        self.encoder = # Implement BiLSTM module which is fed with word embeddings and o
-        self.edge_scorer = # Implement a sub-module to calculate the scores for all poss
-        self.loss_function = # Implement the loss function described above
-    def forward(self, sentence):
-        word_idx_tensor, pos_idx_tensor, true_tree_heads = sentence
-        # Pass word_idx through their embedding layer
-        # Get Bi-LSTM hidden representation for each word in sentence
-        # Get score for each possible edge in the parsing graph, construct score matrix
+        self.hidden_dim = embedding_dim
+        self.POS_dim = POS_dim
+        self.no_concate = no_concate
+        if no_concate:
+            self.hidden_dim = embedding_dim + POS_dim
+            self.POS_dim = 0
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.encoder_words = torch.nn.LSTM(input_size=self.hidden_dim, hidden_size=self.hidden_dim,
+                                           num_layers=num_layers,
+                                           batch_first=True, bidirectional=True, dtype=float)
+        self.encoder_POS = torch.nn.LSTM(input_size=self.POS_dim, hidden_size=self.POS_dim, num_layers=num_layers,
+                                         batch_first=True, bidirectional=True, dtype=float)
+        self.edge_scorer = torch.nn.Linear((self.hidden_dim + self.POS_dim) * 4, 1, dtype=float)
 
-        # Calculate the negative log likelihood loss described above
-
-        return loss, score_mat
-
+    def forward(self, word_embed: torch.Tensor):
+        if self.no_concate:
+            model_out, _ = self.encoder_words(
+                torch.concatenate(word_embed, dim=2).to(self.device))  # [batch_size, seq_len, hidden_dim*2]
+        else:
+            model_out_words, _ = self.encoder_words(
+                word_embed[0].to(self.device))  # [batch_size, seq_len, hidden_dim*2]
+            model_out_POS, _ = self.encoder_POS(
+                word_embed[1].to(self.device))  # [batch_size, seq_len, hidden_dim*2]
+            model_out = torch.concatenate([model_out_words, model_out_POS], 2)
+        score_mat = torch.zeros([word_embed[0].shape[2]]*2)
+        for idxi, i in enumerate(model_out[0]):
+            for idxj, j in enumerate(model_out[0]):
+                if idxi != idxj:
+                    score_mat[idxi, idxj] = self.edge_scorer(torch.concatenate([i, j], dim=0))
+        return score_mat
 
     def eval_model(model, sentence):
         _, score_mat = model(sentence)
         predicted_tree = decode_mst(score_mat)
         return predicted_tree
+
+
+class GraphLoss(nn.NLLLoss):
+    def __int__(self):
+        super(GraphLoss, self).__init__()
+
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+        masked = F.log_softmax(input, dim=1) * target
+        loss = torch.sum(masked) / torch.sum(target)
+        return loss

@@ -35,36 +35,6 @@ dataset_dict = {
 }
 
 
-def create_ff():
-    assert(preprocessing.VEC_SIZE is not None)
-    model = nn.Sequential(OrderedDict([
-        ('L1', nn.Linear(preprocessing.VEC_SIZE, 1024)),
-        ('relu1', nn.ReLU()),
-        ('L2', nn.Linear(1024, 1024)),
-        ('relu3', nn.ReLU()),
-        ('L3', nn.Linear(1024, 2))]))
-    return model
-
-
-def create_custom():
-    assert(preprocessing.VEC_SIZE is not None)
-    model = nn.Sequential(OrderedDict([
-        ('L1', nn.Linear(preprocessing.VEC_SIZE, 2048)),
-        ('relu1', nn.ReLU()),
-        ('L2', nn.Linear(2048, 2048)),
-        ('relu3', nn.ReLU()),
-        ('L3', nn.Linear(2048, 512)),
-        ('relu4', nn.ReLU()),
-        ('L4', nn.Linear(512, 2))]))
-    return model
-
-
-MODELS = {
-    'ff': create_ff,
-    'custom': create_custom
-}
-
-
 def get_dataset(embedder, arch, WD_size):
     parse = False
     dataset_path = f'./data/datasets_{WD_size}.pickle'
