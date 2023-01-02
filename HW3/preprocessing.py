@@ -14,7 +14,7 @@ import re
 TOKEN_C, TOKEN, TOKEN_POS, TOKEN_H = (0, 1, 3, 6)
 TUP_WORD, TUP_POS = (0, 1)
 POS_DICT = {}
-POS_LIST = ['VBZ', 'NN', '#', 'SYM', 'JJS', 'WDT', 'LS', 'VBN', 'CD', 'MD', 'WP$', 'DT', 'IN', 'NNP', 'WP', 'UH', 'PDT', '$', '``', 'EX', 'RBS', 'CC', 'FW', 'PRP$', 'VBP', 'WRB', 'JJR', 'RB', '(', 'PRP', 'TO', 'VBD', 'VBG', 'NNS', 'VB', ':', '.', ')', 'NNPS', 'RBR', 'JJ', ',', 'POS', "''", 'RP']
+POS_LIST = ['VBZ', 'NN', '#', 'SYM', 'JJS', 'WDT', 'LS', 'VBN', 'CD', 'MD', 'WP$', 'DT', 'IN', 'NNP', 'WP', 'UH', 'PDT', '$', '``', 'EX', 'RBS', 'CC', 'FW', 'PRP$', 'VBP', 'WRB', 'JJR', 'RB', '(', 'PRP', 'TO', 'VBD', 'VBG', 'NNS', 'VB', ':', '.', ')', 'NNPS', 'RBR', 'JJ', ',', 'POS', "''", 'RP','ROOT']
 POS_VEC_LEN = len(POS_LIST)
 
 def is_number(word):
@@ -130,12 +130,12 @@ class DataSet:
             print(f'{embedder} is not a familier embedder')
             raise NotImplemented
         unknown_words = set([])
-
+        ROOT_embeding = self.embedder['root']
         all_sentences_x_vectorized = []
         all_sentences_y_vectorized = []
         for i, sentence in enumerate(self.X):
-            words_vec_arr = []
-            pos_arr = []
+            words_vec_arr = [ROOT_embeding]
+            pos_arr = [POS_LIST.index('ROOT')]
             for tup in sentence:
                 word, pos = tup
                 if self.embedder.has_index_for(word.lower()):
