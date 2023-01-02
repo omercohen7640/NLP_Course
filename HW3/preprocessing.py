@@ -183,6 +183,7 @@ class DataSet:
             return word, 0
 
 
+
 class NNDataset:
     def __init__(self, shape, train_dataset, test_dataset):
         # Basic Dataset Info
