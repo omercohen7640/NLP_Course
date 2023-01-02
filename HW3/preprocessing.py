@@ -31,7 +31,7 @@ def make_pos_onehot_mat(x):
     x = np.array(x)
     onehot_mat = np.zeros((x.size, POS_VEC_LEN ))
     onehot_mat[np.arange(x.size), x] = 1
-    return onehot_mat.T
+    return onehot_mat
 
 def make_y_onehot_mat(y):
     y = np.array(y)
@@ -151,7 +151,7 @@ class DataSet:
                 words_vec_arr.append(word_vec)
                 pos_arr.append(POS_LIST.index(pos))
 
-            word_embeddings_mat = np.array(words_vec_arr).T
+            word_embeddings_mat = np.array(words_vec_arr)
             pos_onehot_mat = make_pos_onehot_mat(pos_arr)
             all_sentences_x_vectorized.append((word_embeddings_mat, pos_onehot_mat))
             if self.is_tagged:
