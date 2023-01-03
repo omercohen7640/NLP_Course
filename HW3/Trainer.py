@@ -136,8 +136,12 @@ class NNTrainer:
 
     def reset_accuracy_logger(self, mode):
         self.model_stats.losses[mode].reset()
-        self.model_stats.top1[mode].reset()
-        self.model_stats.top5[mode].reset()
+        self.model_stats.acc[mode].reset()
+
+    def measure_accuracy_log(self, model_out, model_loss, target, images_size, mode):
+        acc = self.model_stats.accuracy(model_out, target)
+        self.model_stats.losses[mode].update(model_loss.item(), images_size)
+        self.model_stats.acc[mode].update(acc, images_size)
 
     def train(self):
         if self.epochs is None:
@@ -175,7 +179,7 @@ class NNTrainer:
             model_loss = self.compute_loss(model_out, target)
 
             # measure accuracy and record logs
-            self.measure_accuracy_log(model_out, model_loss, target, images.size(0), topk=(1, 1), mode='train')
+            self.measure_accuracy_log(model_out, model_loss, target, images[0].size(0), mode='train')
 
             # compute gradient and do SGD step
             self.zero_gradients()
@@ -221,10 +225,10 @@ class NNTrainer:
                     target = target.cuda(non_blocking=True, device=gpu)
 
 
-                model_out = self.compute_forward(images)
+                model_out = self.compute_forward(torch.FloatTensor(images))
 
                 # measure accuracy and record logs
-                self.measure_accuracy_log(model_out, model_loss, target, images.size(0), topk=(1, 1), mode='train')
+                self.measure_accuracy_log(model_out, model_loss, target, images[0].size(0), mode='train')
 
                 # measure elapsed time
 

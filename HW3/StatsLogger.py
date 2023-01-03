@@ -31,40 +31,34 @@ class Model_StatsLogger:
         self.verbose = verbose
         self._assert = _assert
 
-        self.best_top1_acc = 0
-        self.best_top1_epoch = 0
+        self.best_acc = 0
+        self.best_epoch = 0
 
         self.print_verbose('Model_StatsLogger __init__()', 1)
         self.batch_time = {'train': self.AverageMeter('Time', ':6.3f'), 'test': self.AverageMeter('Time', ':6.3f')}
         self.data_time = {'train': self.AverageMeter('Data', ':6.3f'), 'test': self.AverageMeter('Data', ':6.3f')}
         self.losses = {'train': self.AverageMeter('Loss', ':.4e'), 'test': self.AverageMeter('Loss', ':.4e')}
-        self.top1 = {'train': self.AverageMeter('Acc@1', ':6.2f'), 'test': self.AverageMeter('Acc@1', ':6.2f')}
-        self.top5 = {'train': self.AverageMeter('Acc@5', ':6.2f'), 'test': self.AverageMeter('Acc@5', ':6.2f')}
+        self.acc = {'train': self.AverageMeter('Acc@1', ':6.2f'), 'test': self.AverageMeter('Acc@1', ':6.2f')}
 
-        self.progress = {'train': self.ProgressMeter(0, self.batch_time['train'], self.data_time['train'], self.losses['train'], self.top1['train'],
-                                      self.top5['train'], isTrain=1, verbose=verbose),
-                           'test': self.ProgressMeter(0,
-                                                      self.batch_time['test'], self.losses['test'], self.top1['test'], self.top5['test'], prefix='Test: ', isTrain=0, verbose=verbose)}
+        self.progress = {'train': self.ProgressMeter(0, self.batch_time['train'], self.data_time['train'], self.losses['train'], self.acc['train'], isTrain=1, verbose=verbose),
+                        'test': self.ProgressMeter(0, self.batch_time['test'], self.losses['test'], self.acc['test'], prefix='Test: ', isTrain=0, verbose=verbose)}
 
         self.epochs_history = {'train': [], 'test': []}
         self.loss_history = {'train': [], 'test': []}
-        self.top1_history = {'train': [], 'test': []}
-        self.top5_history = {'train': [], 'test': []}
+        self.acc_history = {'train': [], 'test': []}
 
     def export_results_stats(self, gpu = 0):
         csv_results_file_name = os.path.join(cfg.LOG.statistics_path[gpu], 'CM_result.csv')
         with open(csv_results_file_name, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(["Epoch", "Loss_l", "Top1_l", "Top5_l",
-                             "Loss_t", "Top1_t", "Top5_t"])
+            writer.writerow(["Epoch", "Loss_l", "Top1_l",
+                             "Loss_t", "Top1_t"])
             for i in range(0, len(self.epochs_history['train'])):
                 writer.writerow([self.epochs_history['train'][i],
                                 self.loss_history['train'][i],
-                                self.top1_history['train'][i]/100,
-                                self.top5_history['train'][i]/100,
+                                self.acc_history['train'][i]/100,
                                 self.loss_history['test'][i],
-                                self.top1_history['test'][i]/100,
-                                self.top5_history['test'][i]/100])
+                                self.acc_history['test'][i]/100])
 
 
     def export_stats(self, gpu= 0, gega = True):
@@ -73,8 +67,7 @@ class Model_StatsLogger:
     def log_history(self, epoch, mode):
         self.epochs_history[mode].append(epoch)
         self.loss_history[mode].append(float(self.losses[mode].getAverage()))
-        self.top1_history[mode].append(float(self.top1[mode].getAverage()))
-        self.top5_history[mode].append(float(self.top5[mode].getAverage()))
+        self.acc_history[mode].append(float(self.acc[mode].getAverage()))
 
     def plot_results(self, gpu = 0):
         num_points = len(self.epochs_history['train'])
@@ -104,17 +97,11 @@ class Model_StatsLogger:
         axs0.legend()
 
         #top1
-        set_plot_attributes(axs1, xticks, yticks_top1, 'Accuracy Top1', 'Epoch', 'Accuracy')
+        set_plot_attributes(axs1, xticks, yticks_top1, 'Accuracy', 'Epoch', 'Accuracy')
         axs1.yaxis.set_major_formatter(PercentFormatter())
-        axs1.plot(epochs, self.top1_history['train'], marker='.', color='blue', label='Train')
-        axs1.plot(epochs, self.top1_history['test'], marker='.', color='orange', label='Test')
+        axs1.plot(epochs, self.acc_history['train'], marker='.', color='blue', label='Train')
+        axs1.plot(epochs, self.acc_history['test'], marker='.', color='orange', label='Test')
 
-        #top5
-        # set_plot_attributes(axs2, xticks, yticks_top5, 'Accuracy Top5', 'Epoch', 'Accuracy')
-        # axs2.yaxis.set_major_formatter(PercentFormatter())
-        # axs2.plot(epochs, self.top5_history['train'], marker='.', color='blue', label='Train')
-        # axs2.plot(epochs, self.top5_history['test'], marker='.', color='orange', label='Test')
-        # axs2.legend()
 
         graphs_path = os.path.join(cfg.LOG.graph_path[gpu], '_CM_Conv')
         plt.savefig(os.path.join(graphs_path,'_CM_result.png'))
@@ -125,19 +112,16 @@ class Model_StatsLogger:
         if self.verbose >= v:
             cfg.LOG.write(msg)
 
-    def accuracy(self, output, target, topk=(1,)):
+    def accuracy(self, output, target):
         with torch.no_grad():
-            maxk = max(topk)
             batch_size = target.size(0)
 
-            _, pred = output.topk(maxk, 1, True, True)
-            pred = pred.t()
-            correct = pred.eq(target.view(1, -1).expand_as(pred))
+            correct = int(torch.all(output.eq(target)))*100
 
-            res = []
-            for k in topk:
-                correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
-                res.append(correct_k.mul_(100.0 / batch_size))
+            res = correct*(100.0 / batch_size)
+            # for k in topk:
+            #     correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
+            #     res.append(correct_k.mul_(100.0 / batch_size))
             return res
 
 
