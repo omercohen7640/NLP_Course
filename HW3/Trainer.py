@@ -224,9 +224,9 @@ class NNTrainer:
                     images = images.cuda(non_blocking=True, device=gpu)
                     target = target.cuda(non_blocking=True, device=gpu)
 
+                model_out = self.compute_forward(images)
 
-                model_out = self.compute_forward(torch.FloatTensor(images))
-
+                model_loss = self.compute_loss(model_out, target)
                 # measure accuracy and record logs
                 self.measure_accuracy_log(model_out, model_loss, target, images[0].size(0), mode='train')
 
@@ -235,8 +235,6 @@ class NNTrainer:
                 end = time.time()
 
                 if i % (self.batch_size*10) == 0:
-                    print("missing printing func")
-                    raise NotImplementedError
                     self.print_progress(epoch, i, mode='test')
 
             if self.device == 'cude':
