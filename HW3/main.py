@@ -64,8 +64,8 @@ def load_dataset(encoder='glove', batch_size=1):
 
 
 def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, device=None, save_all_states=True,
-                  model_path=None, test_set='test', batch_size=16, seed=None, LR=0.1,concat=True, lstm_layer_n=2, ratio=1):
-    if args.seed is None:
+                  model_path=None, test_set='test', batch_size=16, seed=None, LR=0.1,concat=True, lstm_layer_n=2, ratio=1, tag_only=False):
+    if seed is None:
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     else:
         seed = seed
@@ -75,8 +75,7 @@ def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, device=None, save_a
     trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
                         seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA,
                         device=device, save_all_states=save_all_states, model_path=model_path, test_set=test_set)
-    if args.tag_only is not None:
-        uas = trainer.train()
+    uas = trainer.train()
     return uas
     # raise NotImplementedError
     # tagging = trainer.tag_test()
@@ -85,17 +84,16 @@ def objective(trial):
     ephocs = trial.suggest_int('ephocs', low=10, high=50)
     batch_size = trial.suggest_int('batch_size', low=3, high=8)
     lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
-    encoder = trial.suggest_categorical('embedder',['glove','word2vec'])
+    embedder = trial.suggest_categorical('embedder',['glove','word2vec'])
     wd = trial.suggest_loguniform('wd', 1e-5, 1e-3)
     concat = bool(trial.suggest_int('concat',low=0,high=1)) # 1 = concat, 0 = no_concat
-    encoder = trial.suggest_categorical('embedder', ['glove', 'word2vec'])
     lstm_layer_num = trial.suggest_int('lstm_layer_n', low=2, high=4)
     ratio = trial.suggest_float('ratio', low=0.5, high=1)
-    dataset = load_dataset(encoder=encoder)
+    dataset = load_dataset(encoder=embedder)
     print(f'ephocs={ephocs}, batch size={2**batch_size}, lr={lr}, wd_size={wd}')
     uas = train_network(dataset=dataset, epochs=ephocs, batch_size=2**batch_size,
                   seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1,
-                  device=None, save_all_states=True, model_path=None, test_set='test', )
+                  device=None, save_all_states=True, model_path=None, test_set='test',concat=concat, lstm_layer_n=lstm_layer_num, ratio=ratio)
     return uas
 
 def parameter_sweep():
