@@ -67,13 +67,13 @@ def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, device=None, save_a
     if args.seed is None:
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     else:
-        seed = args.seed
+        seed = seed
 
     model = DependencyParser(dataset.datasets_dict['train'].embedder.vector_size,
                              len(POS_LIST), no_concate=False)
     trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
                         seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA,
-                        device=device, save_all_states=True, model_path=model_path, test_set=test_set)
+                        device=device, save_all_states=save_all_states, model_path=model_path, test_set=test_set)
     if args.tag_only is not None:
         trainer.train()
     # raise NotImplementedError
