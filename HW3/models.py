@@ -29,13 +29,10 @@ class DependencyParser(nn.Module):
 
     def forward(self, word_embed: torch.Tensor):
         if self.no_concate:
-            model_out, _ = self.encoder_words(
-                torch.concatenate(word_embed, dim=2).float())  # [batch_size, seq_len, hidden_dim*2]
+            model_out, _ = self.encoder_words(torch.concatenate(word_embed, dim=2).float())  # [batch_size, seq_len, hidden_dim*2]
         else:
-            model_out_words, _ = self.encoder_words(
-                word_embed[0].float())  # [batch_size, seq_len, hidden_dim*2]
-            model_out_POS, _ = self.encoder_POS(
-                word_embed[1].float())  # [batch_size, seq_len, hidden_dim*2]
+            model_out_words, _ = self.encoder_words(word_embed[0].float())  # [batch_size, seq_len, hidden_dim*2]
+            model_out_POS, _ = self.encoder_POS(word_embed[1].float())  # [batch_size, seq_len, hidden_dim*2]
             model_out = torch.concatenate([model_out_words, model_out_POS], 2)
         score_mat = torch.zeros([word_embed[0].shape[1]]*2)
         for idxi, i in enumerate(model_out[0]):
@@ -52,6 +49,6 @@ class GraphLoss(nn.NLLLoss):
         super(GraphLoss, self).__init__()
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        masked = - F.log_softmax(input, dim=1) * target
+        masked = F.log_softmax(input, dim=1) * target
         loss = - (torch.sum(masked) / torch.sum(target))
         return loss
