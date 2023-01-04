@@ -11,24 +11,28 @@ def eval_model(model, sentence):
 
 
 class DependencyParser(nn.Module):
-    def __init__(self, embedding_dim, POS_dim, no_concate=True, num_layers=2, ra):
+    def __init__(self, embedding_dim, POS_dim, ratio=1, concate=True, num_layers=2):
         super(DependencyParser, self).__init__()
-        self.hidden_dim = embedding_dim
+        self.embedding_dim = embedding_dim
         self.POS_dim = POS_dim
-        self.no_concate = no_concate
-        if no_concate:
-            self.hidden_dim = embedding_dim + POS_dim
-            self.POS_dim = 0
+        self.hidden_dim = int(self.embedding_dim*ratio)
+        self.POS_hidden_dim = int(self.POS_dim*ratio)
+        self.concate = concate
+        if self.concate:
+            self.hidden_dim += self.POS_hidden_dim
+            self.embedding_dim += self.POS_dim
+            self.POS_hidden_dim = 0
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.encoder_words = torch.nn.LSTM(input_size=self.hidden_dim, hidden_size=self.hidden_dim,
-                                           num_layers=num_layers,
+        self.encoder_words = torch.nn.LSTM(input_size=self.embedding_dim, hidden_size=self.hidden_dim, num_layers=num_layers,
                                            batch_first=True, bidirectional=True, dtype=torch.float32)
-        self.encoder_POS = torch.nn.LSTM(input_size=self.POS_dim, hidden_size=self.POS_dim, num_layers=num_layers,
-                                         batch_first=True, bidirectional=True, dtype=torch.float32)
+        self.encoder_POS = None
+        if self.concate:
+            self.encoder_POS = torch.nn.LSTM(input_size=self.POS_dim, hidden_size=self.POS_dim, num_layers=num_layers,
+                                             batch_first=True, bidirectional=True, dtype=torch.float32)
         self.edge_scorer = torch.nn.Linear((self.hidden_dim + self.POS_dim) * 4, 1, dtype=torch.float32)
 
     def forward(self, word_embed: torch.Tensor):
-        if self.no_concate:
+        if self.concate:
             model_out, _ = self.encoder_words(torch.concatenate(word_embed, dim=2).float())  # [batch_size, seq_len, hidden_dim*2]
         else:
             model_out_words, _ = self.encoder_words(word_embed[0].float())  # [batch_size, seq_len, hidden_dim*2]

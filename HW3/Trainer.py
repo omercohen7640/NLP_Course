@@ -141,9 +141,9 @@ class NNTrainer:
         self.model_stats.acc[mode].reset()
 
     def measure_accuracy_log(self, model_out, model_loss, target, images_size, mode):
-        acc = self.model_stats.accuracy(model_out, target)
+        acc, w = self.model_stats.accuracy(model_out, target)
         self.model_stats.losses[mode].update(model_loss.item(), images_size)
-        self.model_stats.acc[mode].update(acc, images_size)
+        self.model_stats.acc[mode].update(acc, w)
 
     def train(self):
         if self.epochs is None:
@@ -182,14 +182,16 @@ class NNTrainer:
 
             model_out = self.compute_forward(images)
 
-            model_loss += self.compute_loss(model_out, target)
+            model_loss_sentence = self.compute_loss(model_out, target)
+            model_loss += model_loss_sentence
 
             predicted_tree, _ = decode_mst(model_out.detach().numpy(), model_out.shape[-1], False)
 
             for j in (predicted_tree == target.argmax(dim=2).numpy()):
                 self.history.append(j)
+
             # measure accuracy and record logs
-            #self.measure_accuracy_log(predicted_tree, model_loss, target.argmax(dim=2).numpy(), images[0].size(0), mode='train')
+            self.measure_accuracy_log(predicted_tree, model_loss_sentence, target.argmax(dim=2).numpy(), images[0].size(0), mode='train')
 
             # compute gradient and do SGD step
             if (i+1) % self.batch_size == 0:
