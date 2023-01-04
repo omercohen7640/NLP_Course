@@ -114,14 +114,9 @@ class Model_StatsLogger:
 
     def accuracy(self, output, target):
         with torch.no_grad():
-            batch_size = target.shape[0]
-
-            correct = output == target
-
-            res = []
-            for i in correct:
-                res.append(i)
-            return res
+            correct = (output == target).flatten()
+            acc = np.sum(correct)/len(correct)
+            return acc, len(correct)
 
 
     class AverageMeter(object):
