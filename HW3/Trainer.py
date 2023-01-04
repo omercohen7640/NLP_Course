@@ -151,10 +151,11 @@ class NNTrainer:
             return
         train_gen = self.dataset.datasets_dict['train'].data_loader
         test_gen = self.dataset.datasets_dict[self.test_set].data_loader
-
+        last_uas = None
         for epoch in range(0, self.epochs):
             self.train_NN(epoch, train_gen)
-            self.test_NN(epoch, test_gen)
+            last_uas = self.test_NN(epoch, test_gen)
+        return last_uas
 
 
     def train_NN(self, epoch, train_gen):
@@ -260,6 +261,7 @@ class NNTrainer:
             cfg.LOG.write("Epoch {} Testing UAS accuracy is : {}.3f".format(epoch, uas_acc))
 
             cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))
+        return uas_acc
 
     def tag_test(self):
 
