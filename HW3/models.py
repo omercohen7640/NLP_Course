@@ -11,7 +11,7 @@ def eval_model(model, sentence):
 
 
 class DependencyParser(nn.Module):
-    def __init__(self, embedding_dim, POS_dim, no_concate=True, num_layers=2):
+    def __init__(self, embedding_dim, POS_dim, no_concate=True, num_layers=2, ra):
         super(DependencyParser, self).__init__()
         self.hidden_dim = embedding_dim
         self.POS_dim = POS_dim
