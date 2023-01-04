@@ -90,7 +90,7 @@ def objective(trial):
     lstm_layer_num = trial.suggest_int('lstm_layer_n', low=2, high=4)
     ratio = trial.suggest_float('ratio', low=0.5, high=1)
     dataset = load_dataset(encoder=embedder)
-    print(f'ephocs={ephocs}, batch size={2**batch_size}, lr={lr}, wd_size={wd}')
+    # print(f'ephocs={ephocs}, batch size={2**batch_size}, lr={lr}, wd_size={wd}')
     uas = train_network(dataset=dataset, epochs=ephocs, batch_size=2**batch_size,
                   seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1,
                   device=None, save_all_states=True, model_path=None, test_set='test',concat=concat, lstm_layer_n=lstm_layer_num, ratio=ratio)
