@@ -114,14 +114,13 @@ class Model_StatsLogger:
 
     def accuracy(self, output, target):
         with torch.no_grad():
-            batch_size = target.size(0)
+            batch_size = target.shape[0]
 
-            correct = int(torch.all(output.eq(target)))*100
+            correct = output == target
 
-            res = correct*(100.0 / batch_size)
-            # for k in topk:
-            #     correct_k = correct[:k].contiguous().view(-1).float().sum(0, keepdim=True)
-            #     res.append(correct_k.mul_(100.0 / batch_size))
+            res = []
+            for i in correct:
+                res.append(i)
             return res
 
 

@@ -10,6 +10,7 @@ import Config as cfg
 #from preprocessing import NNDataset
 from models import GraphLoss
 from StatsLogger import Model_StatsLogger
+from chu_liu_edmonds import decode_mst
 
 class NNTrainer:
     def __init__(self, model, epochs, dataset, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
@@ -46,6 +47,7 @@ class NNTrainer:
         self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
         self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer,milestones=[20, 40], gamma=GAMMA)
         self.load_models()
+        self.history = []
 
     def load_models(self, gpu=0, disributed=0):
         if self.model_path is not None:
@@ -164,8 +166,6 @@ class NNTrainer:
         if self.device == 'cude':
             torch.cuda.synchronize()
         start = timeit.default_timer()
-        epoch_output = []
-        y_true = []
         for i, (images, target) in enumerate(train_gen):
             # measure data loading time
 
@@ -173,24 +173,31 @@ class NNTrainer:
             if self.device == 'cuda':
                 images = images.cuda(non_blocking=True, device=self.device)
                 target = target.cuda(non_blocking=True, device=self.device)
+            if i%self.batch_size==0:
+                model_loss = torch.zeros(1)
 
             model_out = self.compute_forward(images)
 
-            model_loss = self.compute_loss(model_out, target)
+            model_loss += self.compute_loss(model_out, target)
 
+            predicted_tree = decode_mst(model_out.detach().numpy(), model_out.shape[-1], False)
+
+            for i in (predicted_tree[0] == target.argmax(dim=2).numpy()):
+                self.history.append(i)
             # measure accuracy and record logs
-            self.measure_accuracy_log(model_out, model_loss, target, images[0].size(0), mode='train')
+            self.measure_accuracy_log(predicted_tree[0], model_loss, target.argmax(dim=2).numpy(), images[0].size(0), mode='train')
 
             # compute gradient and do SGD step
-            self.zero_gradients()
+            if i%self.batch_size==0:
+                self.zero_gradients()
 
-            self.backward_compute(model_loss)
+                self.backward_compute(model_loss)
 
-            self.compute_step()
-            # measure elapsed time
-            self.log_batch_time(end, mode='train')
+                self.compute_step()
+                # measure elapsed time
+                self.log_batch_time(end, mode='train')
 
-            end = time.time()
+                end = time.time()
 
             if i % (self.batch_size*10) == 0:
                 self.print_progress(epoch, i, mode='train')
@@ -213,9 +220,6 @@ class NNTrainer:
                 torch.cuda.synchronize()
             start = timeit.default_timer()
 
-            epoch_output = []
-            y_true = []
-
             for i, (images, target) in enumerate(test_gen):
 
                 self.log_data_time(end, 'test')
@@ -224,11 +228,20 @@ class NNTrainer:
                     images = images.cuda(non_blocking=True, device=gpu)
                     target = target.cuda(non_blocking=True, device=gpu)
 
-                model_out = self.compute_forward(images)
+                model_loss = 0
 
-                model_loss = self.compute_loss(model_out, target)
-                # measure accuracy and record logs
-                self.measure_accuracy_log(model_out, model_loss, target, images[0].size(0), mode='train')
+                for idx in range(self.batch_size):
+                    model_out = self.compute_forward(images[idx])
+
+                    model_loss += self.compute_loss(model_out, target[idx])
+
+                    predicted_tree = decode_mst(model_out.detach().numpy(), model_out.shape[-1], False)
+
+                    for i in (predicted_tree[0] == target[idx].argmax(dim=2).numpy()):
+                        self.history.append(i)
+                    # measure accuracy and record logs
+                    self.measure_accuracy_log(predicted_tree[0], model_loss, target[idx].argmax(dim=2).numpy(),
+                                              images[0].size(0), mode='test')
 
                 # measure elapsed time
 

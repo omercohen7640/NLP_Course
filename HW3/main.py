@@ -44,10 +44,11 @@ parser.add_argument('--port', default='12355', help='choose port for distributed
 pickle_path = "data/dataset.pickle"
 
 
-def load_dataset(encoder='glove'):
+def load_dataset(encoder='glove', batch_size=1):
     if os.path.exists(pickle_path):
         with open(pickle_path, 'rb') as f:
             ds = pickle.load(f)
+        #ds.create_dataloaders(batch_size=batch_size)
     else:
         p_path = 'data/'
         paths_dict = {'train': p_path + 'train.labeled', 'test': p_path + 'test.labeled',
@@ -57,6 +58,7 @@ def load_dataset(encoder='glove'):
         ds.create_datsets(embedder=encoder, parsing=True)
         with open(pickle_path, 'wb') as f:
             pickle.dump(ds, f)
+        #ds.create_dataloaders(batch_size=batch_size)
     return ds
 
 
@@ -81,5 +83,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     cfg.USER_CMD = ' '.join(sys.argv)
 
-    dataset = load_dataset(args.encoder)
+    dataset = load_dataset(args.encoder, args.batch_size)
     train_network(dataset, args)
