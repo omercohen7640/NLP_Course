@@ -73,8 +73,8 @@ def train_network(dataset, args):
                         device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set)
     if args.tag_only is not None:
         trainer.train()
-    raise NotImplementedError
-    tagging = trainer.tag_test()
+    # raise NotImplementedError
+    # tagging = trainer.tag_test()
 
 
 if __name__ == '__main__':
