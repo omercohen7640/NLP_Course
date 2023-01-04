@@ -62,7 +62,8 @@ def load_dataset(encoder='glove', batch_size=1):
     return ds
 
 
-def train_network(dataset, args):
+def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, device=None, save_all_states=True,
+                  model_path=None, test_set='test', batch_size=16, seed=None, LR=0.1):
     if args.seed is None:
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     else:
@@ -70,9 +71,9 @@ def train_network(dataset, args):
 
     model = DependencyParser(dataset.datasets_dict['train'].embedder.vector_size,
                              len(POS_LIST), no_concate=False)
-    trainer = NNTrainer(dataset=dataset, model=model, epochs=args.epochs, batch_size=args.batch_size,
-                        seed=seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
-                        device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set)
+    trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
+                        seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA,
+                        device=device, save_all_states=True, model_path=model_path, test_set=test_set)
     if args.tag_only is not None:
         trainer.train()
     # raise NotImplementedError
@@ -82,6 +83,7 @@ def train_network(dataset, args):
 if __name__ == '__main__':
     args = parser.parse_args()
     cfg.USER_CMD = ' '.join(sys.argv)
-
     dataset = load_dataset(args.encoder, args.batch_size)
-    train_network(dataset, args)
+    train_network(dataset=dataset, epochs=args.epochs, batch_size=args.batch_size,
+                  seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
+                  device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set)
