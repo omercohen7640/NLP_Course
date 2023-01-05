@@ -67,7 +67,7 @@ class NERmodel:
             assert (self.arch == chkp['arch'])
             try:
                 self.model.load_state_dict(chkp['state_dict'], strict=True)
-                self.model = self.model.cuda() if self.device == 'cuda' else self.model
+                self.model = self.model.cuda() if self.device == torch.device('cuda') else self.model
                 self.model_optimizer.load_state_dict(chkp['optimizer'])
                 self.model_train_scheduler.load_state_dict(chkp['scheduler'])
                 cfg.LOG.write('Loaded model successfully')
@@ -205,7 +205,7 @@ class NERmodel:
         self.switch_to_train_mode()
 
         end = time.time()
-        if self.device == 'cude':
+        if self.device == torch.device('cuda'):
             torch.cuda.synchronize()
         start = timeit.default_timer()
         epoch_output = []
@@ -214,7 +214,7 @@ class NERmodel:
             # measure data loading time
 
             self.log_data_time(end, 'train')
-            if self.device == 'cuda':
+            if self.device == torch.device('cuda'):
                 images = images.cuda(non_blocking=True, device=self.device)
                 target = target.cuda(non_blocking=True, device=self.device)
 
@@ -250,7 +250,7 @@ class NERmodel:
         f1 = f1_score(epoch_output, y_true)
         print(f'f1 score is {f1}')
         #self.set_learning_rate()
-        if self.device == 'cude':
+        if self.device == torch.device('cuda'):
             torch.cuda.synchronize()
         stop = timeit.default_timer()
         self.log_history(epoch, mode='train')
@@ -267,7 +267,7 @@ class NERmodel:
 
         with torch.no_grad():
             end = time.time()
-            if self.device == 'cude':
+            if self.device == torch.device('cuda'):
                 torch.cuda.synchronize()
             start = timeit.default_timer()
 
@@ -278,7 +278,7 @@ class NERmodel:
 
                 self.log_data_time(end, 'test')
 
-                if self.device == 'cuda':
+                if self.device == torch.device('cuda'):
                     images = images.cuda(non_blocking=True, device=gpu)
                     target = target.cuda(non_blocking=True, device=gpu)
 
@@ -307,7 +307,7 @@ class NERmodel:
 
             f1 = f1_score(epoch_output, y_true)
             print(f'f1 score is {f1}')
-            if self.device == 'cude':
+            if self.device == torch.device('cuda'):
                 torch.cuda.synchronize()
             stop = timeit.default_timer()
             self.log_history(epoch, mode='test')

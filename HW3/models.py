@@ -32,11 +32,11 @@ class DependencyParser(nn.Module):
             self.encoder_POS = torch.nn.LSTM(input_size=self.POS_dim, hidden_size=self.POS_hidden_dim, num_layers=num_layers,
                                              batch_first=True, bidirectional=True)
         fc_in_size = (self.POS_hidden_dim + self.hidden_dim)*4
-        self.edge_scorer = nn.Sequential(OrderedDict([('L1', nn.Linear(fc_in_size, int(fc_in_size/2))),
+        self.edge_scorer = nn.Sequential(OrderedDict([('L1', nn.Linear(fc_in_size, int(fc_in_size/5))),
                                                       ('relu-1', nn.ReLU()),
-                                                      ('L2', nn.Linear(int(fc_in_size/2), int(fc_in_size/4))),
+                                                      ('L2', nn.Linear(int(fc_in_size/5), 100)),
                                                       ('relu-2', nn.ReLU()),
-                                                      ('L3', nn.Linear(int(fc_in_size/4), 1))]))
+                                                      ('L3', nn.Linear(100, 1))]))
 
     def forward(self, word_embed: torch.Tensor):
         n_words = word_embed[0].shape[1]
