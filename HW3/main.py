@@ -42,10 +42,15 @@ parser.add_argument('--tag_only', default=0, type=int, help='do not run train, o
 parser.add_argument('--v', default=0, type=int, help='verbosity level (0,1,2) (default:0)')
 parser.add_argument('--port', default='12355', help='choose port for distributed run')
 
-pickle_path = "data/dataset.pickle"
+pickle_glove_path = "data/dataset_glove.pickle"
+pickle_word2vec_path = "data/dataset_word2vec.pickle"
 
 
 def load_dataset(encoder='glove', batch_size=1):
+    if encoder == 'glove':
+        pickle_path = pickle_glove_path
+    else:
+        pickle_path = pickle_word2vec_path
     if os.path.exists(pickle_path):
         with open(pickle_path, 'rb') as f:
             ds = pickle.load(f)
@@ -61,7 +66,6 @@ def load_dataset(encoder='glove', batch_size=1):
             pickle.dump(ds, f)
         #ds.create_dataloaders(batch_size=batch_size)
     return ds
-
 
 def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, device=None, save_all_states=True,
                   model_path=None, test_set='test', batch_size=16, seed=None, LR=0.1,concat=True, lstm_layer_n=2, ratio=1, tag_only=False):
