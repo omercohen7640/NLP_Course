@@ -271,10 +271,10 @@ class NNTrainer:
             stop = timeit.default_timer()
             uas_acc = np.sum(self.history) / len(self.history)
 
-            self.update_best_acc(epoch, uas_acc)
             cfg.LOG.write("Epoch {} Testing UAS accuracy is : {}.3f".format(epoch, uas_acc))
 
             cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))
+        self.update_best_acc(epoch, uas_acc)
         return uas_acc
 
     def tag_test(self):

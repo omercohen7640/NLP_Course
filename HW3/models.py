@@ -49,7 +49,7 @@ class DependencyParser(nn.Module):
         score_mat = torch.zeros([word_embed[0].shape[1]]*2, device=self.device)
         vec1 = model_out.squeeze().repeat([1, n_words]).reshape(-1, (self.POS_hidden_dim + self.hidden_dim)*2)
         vec2 = model_out.squeeze().repeat([n_words, 1])
-        fc_input = torch.cat([vec1,vec2],dim=1)
+        fc_input = torch.cat([vec1, vec2], dim=1)
         score_mat = self.edge_scorer(fc_input).reshape((n_words,n_words))
         return score_mat
 

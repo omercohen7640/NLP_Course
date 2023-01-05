@@ -90,7 +90,9 @@ def objective(trial):
     ephocs = trial.suggest_int('ephocs', low=10, high=50)
     # ephocs = 1
     batch_size = trial.suggest_int('batch_size', low=3, high=8)
+    batch_size = 0
     lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
+    lr = 0.1
     embedder = trial.suggest_categorical('embedder',['glove','word2vec'])
     wd = trial.suggest_loguniform('wd', 1e-5, 1e-3)
     concat = bool(trial.suggest_int('concat',low=0,high=1)) # 1 = concat, 0 = no_concat
