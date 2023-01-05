@@ -43,9 +43,12 @@ class NNTrainer:
         self.dataset = dataset
         self.test_set = test_set
         self.model = model
+        self.best_acc = 0
+        if model_path is None and device == 'cuda' and torch.cuda.is_available() :
+            self.model = self.model.cuda()
         self.criterion = GraphLoss()
         self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
-        self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer,milestones=[20, 40], gamma=GAMMA)
+        self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer, milestones=[20, 40], gamma=GAMMA)
         self.load_models()
         self.history = []
 
@@ -58,7 +61,7 @@ class NNTrainer:
             assert (self.arch == chkp['arch'])
             try:
                 self.model.load_state_dict(chkp['state_dict'], strict=True)
-                self.model = self.model.cuda() if self.device == 'cuda' else self.model
+                self.model = self.model.cuda() if self.device == torch.device('cuda') else self.model
                 self.model_optimizer.load_state_dict(chkp['optimizer'])
                 self.model_train_scheduler.load_state_dict(chkp['scheduler'])
                 cfg.LOG.write('Loaded model successfully')
@@ -109,12 +112,12 @@ class NNTrainer:
 
     def _save_state(self, epoch, best_top1_acc, model, optimizer, scheduler, desc):
         if desc is None:
-            filename = '{}_epoch-{}_top1-{}.pth'.format(self.arch, epoch, round(best_top1_acc, 2))
+            filename = 'epoch-{}_top1-{}.pth'.format(epoch, round(best_top1_acc, 2))
         else:
-            filename = '{}_epoch-{}_{}_top1-{}.pth'.format(self.arch, epoch, desc, round(best_top1_acc, 2))
+            filename = 'epoch-{}_{}_top1-{}.pth'.format(epoch, desc, round(best_top1_acc, 2))
         path = '{}/{}'.format(cfg.LOG.models_path, filename)
 
-        state = {'arch': self.arch,
+        state = {
                  'epoch': epoch + 1,
                  'state_dict': model.state_dict(),
                  'optimizer': optimizer.state_dict(),
@@ -124,6 +127,8 @@ class NNTrainer:
         torch.save(state, path)
 
     def update_best_acc(self, epoch, acc):
+        if acc > self.best_acc:
+            self.best_acc = acc
         self._save_state(epoch=epoch, best_top1_acc=acc, model=self.model,
                          optimizer=self.model_optimizer, scheduler=self.model_train_scheduler,
                          desc='Compute_flavour_Conv')
@@ -164,34 +169,37 @@ class NNTrainer:
         self.switch_to_train_mode()
 
         end = time.time()
-        if self.device == 'cude':
+        if self.device == torch.device('cuda'):
             torch.cuda.synchronize()
         start = timeit.default_timer()
-        model_loss = torch.zeros(1)
+        model_loss = torch.zeros(1).to(self.device)
         self.history = []
         for i, (images, target) in enumerate(train_gen):
             # measure data loading time
 
             self.log_data_time(end, 'train')
-            if self.device == 'cuda':
-                images = images.cuda(non_blocking=True, device=self.device)
+            if self.device == torch.device('cuda'):
+
+                images[0] = images[0].cuda(non_blocking=True, device=self.device)
+                images[1] = images[1].cuda(non_blocking=True, device=self.device)
                 target = target.cuda(non_blocking=True, device=self.device)
 
             if i % self.batch_size == 0:
-                model_loss = torch.zeros(1)
+                model_loss = torch.zeros(1).to(self.device)
 
-            model_out = self.compute_forward(images)
+            model_out = self.compute_forward(images).to(self.device)
+            model_out_sftmx = nn.functional.softmax(model_out, dim=1)
 
             model_loss_sentence = self.compute_loss(model_out, target)
             model_loss += model_loss_sentence
 
-            predicted_tree, _ = decode_mst(model_out.detach().numpy(), model_out.shape[-1], False)
+            predicted_tree, _ = decode_mst(model_out_sftmx.detach().cpu().numpy(), model_out_sftmx.shape[-1], False)
 
-            for j in (predicted_tree == target.argmax(dim=2).numpy()):
-                self.history.append(j)
+            for j in (predicted_tree == target.argmax(dim=2).detach().cpu().numpy()):
+                self.history = np.append(self.history, j)
 
             # measure accuracy and record logs
-            self.measure_accuracy_log(predicted_tree, model_loss_sentence, target.argmax(dim=2).numpy(), images[0].size(0), mode='train')
+            self.measure_accuracy_log(predicted_tree, model_loss_sentence.detach().cpu().numpy(), target.argmax(dim=2).detach().cpu().numpy(), images[0].size(0), mode='train')
 
             # compute gradient and do SGD step
             if (i+1) % self.batch_size == 0:
@@ -207,7 +215,8 @@ class NNTrainer:
 
             if i % (self.batch_size*10) == 0:
                 self.print_progress(epoch, i, mode='train')
-        if self.device == 'cude':
+
+        if self.device == torch.device('cuda'):
             torch.cuda.synchronize()
         stop = timeit.default_timer()
         uas_acc = np.sum(self.history)/len(self.history)
@@ -224,7 +233,7 @@ class NNTrainer:
         self.history = []
         with torch.no_grad():
             end = time.time()
-            if self.device == 'cude':
+            if self.device == torch.device('cuda'):
                 torch.cuda.synchronize()
             start = timeit.default_timer()
 
@@ -232,20 +241,21 @@ class NNTrainer:
 
                 self.log_data_time(end, 'test')
 
-                if self.device == 'cuda':
-                    images = images.cuda(non_blocking=True, device=gpu)
-                    target = target.cuda(non_blocking=True, device=gpu)
+                if self.device == torch.device('cuda'):
+                    images[0] = images[0].cuda(non_blocking=True, device=self.device)
+                    images[1] = images[1].cuda(non_blocking=True, device=self.device)
+                    target = target.cuda(non_blocking=True, device=self.device)
 
-                model_out = self.compute_forward(images)
+                model_out = self.compute_forward(images).to(self.device)
 
                 model_loss = self.compute_loss(model_out, target)
+                model_out_sftmx = nn.functional.softmax(model_out, dim=1)
+                predicted_tree, _ = decode_mst(model_out_sftmx.detach().cpu().numpy(), model_out_sftmx.shape[-1], False)
 
-                predicted_tree, _ = decode_mst(model_out.detach().numpy(), model_out.shape[-1], False)
-
-                for j in (predicted_tree == target.argmax(dim=2).numpy()):
-                    self.history.append(i)
+                for j in (predicted_tree == target.argmax(dim=2).detach().cpu().numpy()):
+                    self.history = np.append(self.history, j)
                 # measure accuracy and record logs
-                self.measure_accuracy_log(predicted_tree, model_loss, target.argmax(dim=2).numpy(), images[0].size(0),
+                self.measure_accuracy_log(predicted_tree, model_loss.detach().cpu().numpy(), target.argmax(dim=2).detach().cpu().numpy(), images[0].size(0),
                                           mode='test')
 
                 # measure elapsed time
@@ -255,11 +265,13 @@ class NNTrainer:
                 if i % (self.batch_size*10) == 0:
                     self.print_progress(epoch, i, mode='test')
 
-            if self.device == 'cude':
+
+            if self.device == torch.device('cuda'):
                 torch.cuda.synchronize()
             stop = timeit.default_timer()
             uas_acc = np.sum(self.history) / len(self.history)
 
+            self.update_best_acc(epoch, uas_acc)
             cfg.LOG.write("Epoch {} Testing UAS accuracy is : {}.3f".format(epoch, uas_acc))
 
             cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))
