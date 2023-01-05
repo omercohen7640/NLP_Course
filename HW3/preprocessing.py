@@ -55,7 +55,7 @@ class DataSets:
             self.datasets_dict[dataset_name] = DataSet(path, parsing)
             self.datasets_dict[dataset_name].embed_X_and_Y(embedder)
             self.datasets_dict[dataset_name].prepare_data_for_dataloader()
-            self.datasets_dict[dataset_name].data_loader = DataLoader(self.datasets_dict[dataset_name].data_for_dataloader)
+            self.datasets_dict[dataset_name].data_loader = DataLoader(self.datasets_dict[dataset_name].data_for_dataloader, shuffle=True)
 
     def create_dataloaders(self, batch_size):
         for dataset_name, path in self.paths_dict.items():
