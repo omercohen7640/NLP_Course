@@ -78,7 +78,7 @@ def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, device=None, save_a
         seed = seed
 
     model = DependencyParser(dataset.datasets_dict['train'].embedder.vector_size,
-                             len(POS_LIST), concate=concat,num_layers=lstm_layer_n, ratio=ratio)
+                             len(POS_LIST), concate=concat, num_layers=lstm_layer_n, ratio=ratio)
     trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
                         seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA,
                         device=device, save_all_states=save_all_states, model_path=model_path, test_set=test_set)
@@ -91,22 +91,24 @@ def objective(trial):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     cfg.LOG.write("running on "+device)
     ephocs = trial.suggest_int('ephocs', low=10, high=50)
-    # ephocs = 1
+    ephocs = 30
     batch_size = trial.suggest_int('batch_size', low=3, high=8)
     batch_size = 0
     lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
     lr = 0.1
-    embedder = trial.suggest_categorical('embedder',['glove','word2vec'])
+    # embedder = trial.suggest_categorical('embedder',['glove','word2vec','fasttext'])
+    embedder = 'fasttext'
     wd = trial.suggest_loguniform('wd', 1e-5, 1e-3)
-    concat = bool(trial.suggest_int('concat',low=0,high=1)) # 1 = concat, 0 = no_concat
+    concat = True # 1 = concat, 0 = no_concat
     # concat = 0
-    lstm_layer_num = trial.suggest_int('lstm_layer_n', low=2, high=4)
-    ratio = trial.suggest_float('ratio', low=0.5, high=1)
+    # lstm_layer_num = trial.suggest_int('lstm_layer_n', low=2, high=4)
+    lstm_layer_num = 2
+    # ratio = trial.suggest_float('ratio', low=0.5, high=1)
     dataset = load_dataset(encoder=embedder)
     # print(f'ephocs={ephocs}, batch size={2**batch_size}, lr={lr}, wd_size={wd}')
     uas = train_network(dataset=dataset, epochs=ephocs, batch_size=2**batch_size,
                   seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1,
-                  device=device, save_all_states=True, model_path=None, test_set='test',concat=concat, lstm_layer_n=lstm_layer_num, ratio=ratio)
+                  device=device, save_all_states=True, model_path=None, test_set='test',concat=concat, lstm_layer_n=lstm_layer_num, ratio=1)
     return uas
 
 def parameter_sweep():
