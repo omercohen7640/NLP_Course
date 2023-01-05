@@ -77,7 +77,7 @@ def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, device=None, save_a
     else:
         seed = seed
 
-    model = DependencyParser(dataset.datasets_dict['train'].embedder.vector_size,
+    model = DependencyParser(dataset.datasets_dict['train'].vec_size,
                              len(POS_LIST), concate=concat,num_layers=lstm_layer_n, ratio=ratio)
     trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
                         seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA,
