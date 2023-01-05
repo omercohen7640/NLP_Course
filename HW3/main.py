@@ -44,13 +44,16 @@ parser.add_argument('--port', default='12355', help='choose port for distributed
 
 pickle_glove_path = "data/dataset_glove.pickle"
 pickle_word2vec_path = "data/dataset_word2vec.pickle"
+pickle_fasttext_path = "data/dataset_fasttext.pickle"
 
 
-def load_dataset(encoder='glove', batch_size=1):
+def load_dataset(encoder='word2vece', batch_size=1):
     if encoder == 'glove':
         pickle_path = pickle_glove_path
-    else:
+    elif encoder == 'word2vec':
         pickle_path = pickle_word2vec_path
+    else:
+        pickle_path = pickle_fasttext_path
     if os.path.exists(pickle_path):
         with open(pickle_path, 'rb') as f:
             ds = pickle.load(f)
@@ -114,9 +117,9 @@ def parameter_sweep():
 def main():
     args = parser.parse_args()
     cfg.USER_CMD = ' '.join(sys.argv)
-    dataset = load_dataset(args.encoder, args.batch_size)
+    dataset = load_dataset('fasttext', args.batch_size)
     train_network(dataset=dataset, epochs=args.epochs, batch_size=args.batch_size,
                   seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
                   device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set)
 if __name__ == '__main__':
-    parameter_sweep()
+    main()

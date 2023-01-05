@@ -3,6 +3,7 @@ import os
 import gensim.downloader as api
 from gensim.parsing.preprocessing import RE_PUNCT
 import torch
+import torchtext
 import numpy as np
 from torch.utils.data import Dataset
 import string
@@ -41,13 +42,7 @@ def make_y_onehot_mat(y):
     onehot_mat_f = np.vstack((z_vec, onehot_mat))
     return onehot_mat_f.T
 
-def hyphenated_words(embedder, word):
-    sub_words = word.split('-')
-    vec = 0
-    for sub_w in sub_words:
-        if embedder.has_index_for(sub_w.lower()):
-            vec = embedder[sub_w.lower()] if isinstance(vec, int) else vec + embedder[sub_w.lower()]
-    return vec/len(sub_words)
+
 
 class DataSets:
 
@@ -125,11 +120,17 @@ class DataSet:
             self.len = self.X_vec.shape[0]
         return self.len
 
-    def embed_X_and_Y(self, embedder):
+    def embed_X_and_Y(self, embedder='word2vec'):
+        self.embedder_name = embedder
         if embedder == 'glove':
             self.embedder = api.load('glove-twitter-200')
+            self.vec_size = self.embedder.vector_size
         elif embedder == 'word2vec':
             self.embedder = api.load('word2vec-google-news-300')
+            self.vec_size = self.embedder.vector_size
+        elif embedder == 'fasttext':
+            self.embedder = torchtext.vocab.FastText(language='en')
+            self.vec_size = self.embedder.vectors.shape[1]
         else:
             print(f'{embedder} is not a familier embedder')
             raise NotImplemented
@@ -138,20 +139,22 @@ class DataSet:
         all_sentences_x_vectorized = []
         all_sentences_y_vectorized = []
         for i, sentence in enumerate(self.X):
-            words_vec_arr = [ROOT_embeding]
+            words_vec_arr = [np.array(ROOT_embeding)]
             pos_arr = [POS_LIST.index('ROOT')]
             for tup in sentence:
                 word, pos = tup
-                if self.embedder.has_index_for(word.lower()):
+                if self.has_index(token=word):
                     word_vec = (self.embedder[word.lower()])
                 else:  # if word has no embeddings
                     if self.parsing:
                         word_p, vec_p = self.parse(word)
                         if word_p == word:
                             unknown_words.add(word)
-                            word_vec = np.array(self.embedder.vector_size * [0])
+                            word_vec = np.array(self.vec_size * [0])
                     else:
                         word_vec = np.array(self.embedder.vector_size * [0])
+                if not isinstance(word_vec,np.ndarray):
+                    word_vec = np.array(word_vec)
                 words_vec_arr.append(word_vec)
                 pos_arr.append(POS_LIST.index(pos))
 
@@ -165,6 +168,19 @@ class DataSet:
             self.Y_vec = all_sentences_y_vectorized
         self.Unknown_words = unknown_words
 
+    def has_index(self, token):
+        if self.embedder_name == 'fasttext':
+            return self.embedder.itos.__contains__(token.lower())
+        else:
+            return self.embedder.has_index_for(token.lower())
+
+    def hyphenated_words(self, word):
+        sub_words = word.split('-')
+        vec = 0
+        for sub_w in sub_words:
+            if self.has_index(sub_w.lower()):
+                vec = self.embedder[sub_w.lower()] if isinstance(vec, int) else vec + self.embedder[sub_w.lower()]
+        return vec / len(sub_words)
     def prepare_data_for_dataloader(self):
         data_for_dataloader=[]
         for i in range(len(self.X_vec)):
@@ -181,8 +197,10 @@ class DataSet:
         if is_number(word):  # word is a number
             return 'number', self.embedder['number']
         elif '-' in word:
-            vec = hyphenated_words(self.embedder, word)
+            vec = self.hyphenated_words( word)
             return 'average', vec
+        elif word[0].isupper():
+            return 'name', self.embedder['name']
         else:
             return word, 0
 
