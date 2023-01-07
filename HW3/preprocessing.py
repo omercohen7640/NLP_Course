@@ -79,7 +79,8 @@ class DataSets:
         elif embedder == 'custom':
             words_list = [[tup[0] for tup in sen] for sen in train_set]
             special_tokens = ['<unk>', '<root>']
-            self.embedder = build_vocab_from_iterator(words_list, specials=special_tokens)
+            words_list.append(special_tokens)
+            self.embedder = build_vocab_from_iterator(words_list)
             self.embedder.set_default_index(self.embedder['<unk>'])
             self.vec_size = len(self.embedder)
         elif embedder == 'fasttext':
