@@ -66,7 +66,7 @@ class NNTrainer:
                 self.model.load_state_dict(chkp['state_dict'], strict=True)
                 self.model = self.model.cuda() if self.device == torch.device('cuda') else self.model
                 self.model_optimizer.load_state_dict(chkp['optimizer'])
-                self.model_train_scheduler.load_state_dict(chkp['scheduler'])
+                # self.model_train_scheduler.load_state_dict(chkp['scheduler'])
                 cfg.LOG.write('Loaded model successfully')
             except RuntimeError as e:
                 cfg.LOG.write('Loading model state warning, please review')
@@ -113,7 +113,8 @@ class NNTrainer:
     def compute_step(self):
         self.model_optimizer.step()
 
-    def _save_state(self, epoch, best_top1_acc, model, optimizer, scheduler, desc):
+    # def _save_state(self, epoch, best_top1_acc, model, optimizer, scheduler, desc):
+    def _save_state(self, epoch, best_top1_acc, model, optimizer, desc):
         if desc is None:
             filename = 'epoch-{}_top1-{}.pth'.format(epoch, round(best_top1_acc, 2))
         else:
@@ -124,7 +125,7 @@ class NNTrainer:
                  'epoch': epoch + 1,
                  'state_dict': model.state_dict(),
                  'optimizer': optimizer.state_dict(),
-                 'scheduler': scheduler.state_dict(),
+                 # 'scheduler': scheduler.state_dict(),
                  'best_top1_acc': best_top1_acc}
 
         torch.save(state, path)
@@ -133,16 +134,16 @@ class NNTrainer:
         if acc > self.best_acc:
             self.best_acc = acc
         self._save_state(epoch=epoch, best_top1_acc=acc, model=self.model,
-                         optimizer=self.model_optimizer, scheduler=self.model_train_scheduler,
+                         optimizer=self.model_optimizer,# scheduler=self.model_train_scheduler,
                          desc='Compute_flavour_Conv')
 
     def export_stats(self, gpu=0):
         # export stats results
         self.model_stats.export_stats(gpu=gpu)
 
-    def plot_results(self, gpu=0):
+    def plot_results(self, header, gpu=0):
         # plot results for each convolution
-        self.model_stats.plot_results(gpu=gpu)
+        self.model_stats.plot_results(header, gpu=gpu)
 
     def reset_accuracy_logger(self, mode):
         self.model_stats.losses[mode].reset()

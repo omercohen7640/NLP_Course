@@ -48,28 +48,24 @@ pickle_fasttext_path = "data/dataset_fasttext.pickle"
 pickle_custom_path = "data/dataset_custom.pickle"
 
 def load_dataset(encoder='word2vece', batch_size=1):
-    if encoder == 'glove':
-        pickle_path = pickle_glove_path
-    elif encoder == 'word2vec':
-        pickle_path = pickle_word2vec_path
-    elif encoder == 'custom':
-        pickle_path = pickle_custom_path
-    else:
-        pickle_path = pickle_fasttext_path
-    if os.path.exists(pickle_path):
-        with open(pickle_path, 'rb') as f:
-            ds = pickle.load(f)
-        ds.create_dataloaders(batch_size=batch_size)
-    else:
-        p_path = 'data/'
-        paths_dict = {'train': p_path + 'train.labeled', 'test': p_path + 'test.labeled',
-                      'comp': p_path + 'comp.unlabeled'}
-        # paths_dict = {'train': p_path + 'train.labeled'}
-        ds = DataSets(paths_dict=paths_dict)
-        ds.create_datsets(embedder_name=encoder, parsing=False)
-        with open(pickle_path, 'wb') as f:
-            pickle.dump(ds, f)
-        ds.create_dataloaders(batch_size=batch_size)
+    # if encoder == 'glove':
+    #     pickle_path = pickle_glove_path
+    # elif encoder == 'word2vec':
+    #     pickle_path = pickle_word2vec_path
+    # elif encoder == 'custom':
+    #     pickle_path = pickle_custom_path
+    # else:
+    #     pickle_path = pickle_fasttext_path
+
+    p_path = 'data/'
+    paths_dict = {'train': p_path + 'train_small.labeled', 'test': p_path + 'test.labeled',
+                  'comp': p_path + 'comp.unlabeled'}
+    # # paths_dict = {'train': p_path + 'train.labeled'}
+    ds = DataSets(paths_dict=paths_dict)
+    ds.create_datsets(embedder_name=encoder, parsing=False)
+    # with open(pickle_path, 'wb') as f:
+    #     pickle.dump(ds, f)
+    ds.create_dataloaders(batch_size=batch_size)
     return ds
 
 
@@ -130,11 +126,26 @@ def parameter_sweep():
 
 
 def main():
-    args = parser.parse_args()
-    cfg.USER_CMD = ' '.join(sys.argv)
-    dataset = load_dataset('fasttext', args.batch_size)
-    train_network(dataset=dataset, epochs=args.epochs, batch_size=args.batch_size,
-                  seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
-                  device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set)
+    cfg.LOG.start_new_log(name='parameter_search')
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    cfg.LOG.write("running on " + device)
+    ephocs = 30
+    batch_size = 1
+    lr = 5e-3 
+    embedder = 'custom'
+    wd = 1e-3 
+    lmbda = 1e-3 
+    concat = True  # 1 = concat, 0 = no_concat
+    lstm_layer_num = 2
+    ratio = 1 
+    embedding_dim = 100 
+    pos_dim = 25
+    dataset = load_dataset(encoder=embedder)
+    uas = train_network(dataset=dataset, epochs=ephocs, batch_size=2 ** batch_size, trial_num=90,
+                        seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1, lmbda=lmbda,
+                        device=device, save_all_states=True, model_path=None, test_set='test', concat=concat,
+                        lstm_layer_n=lstm_layer_num, ratio=ratio, embedding_dim=embedding_dim, POS_dim=pos_dim)
+
 if __name__ == '__main__':
-    parameter_sweep()
+    main()
+

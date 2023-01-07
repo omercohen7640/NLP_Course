@@ -69,7 +69,7 @@ class Model_StatsLogger:
         self.loss_history[mode].append(float(self.losses[mode].getAverage()))
         self.acc_history[mode].append(float(self.acc[mode].getAverage()))
 
-    def plot_results(self, gpu = 0):
+    def plot_results(self, header, gpu = 0):
         num_points = len(self.epochs_history['train'])
         epochs = np.arange(0, num_points)
         if num_points + 1 > 120:
@@ -86,7 +86,7 @@ class Model_StatsLogger:
         yticks_loss = np.arange(0, 5.5, 0.5)
 
         fig, (axs0, axs1, axs2) = plt.subplots(3, 1, figsize=fig_size)
-        fig.suptitle(' CM Convolution Results', size='x-large', weight='bold')
+        fig.suptitle('DP Results', size='x-large', weight='bold')
 
         fig.tight_layout(pad=8)
 
@@ -103,8 +103,8 @@ class Model_StatsLogger:
         axs1.plot(epochs, self.acc_history['test'], marker='.', color='orange', label='Test')
 
 
-        graphs_path = os.path.join(cfg.LOG.graph_path[gpu], '_CM_Conv')
-        plt.savefig(os.path.join(graphs_path,'_CM_result.png'))
+        graphs_path = os.path.join(cfg.LOG.graph_path[gpu])
+        plt.savefig(os.path.join(graphs_path, header+'_result.png'))
 
         plt.close()
 

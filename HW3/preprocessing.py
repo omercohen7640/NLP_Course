@@ -65,7 +65,7 @@ class DataSets:
     def create_dataloaders(self, batch_size):
         for dataset_name, path in self.paths_dict.items():
             self.datasets_dict[dataset_name].data_loader = DataLoader(
-                self.datasets_dict[dataset_name].data_for_dataloader, batch_size=1)
+                self.datasets_dict[dataset_name].data_for_dataloader, batch_size=1, shuffle=True)
 
     def create_embedder(self, embedder, train_set):
         self.POS_size = len(POS_LIST)
@@ -81,7 +81,7 @@ class DataSets:
             special_tokens = ['<unk>', '<root>']
             words_list.append(special_tokens)
             self.embedder = build_vocab_from_iterator(words_list)
-            self.embedder.set_default_index(self.embedder['<unk>'])
+            # self.embedder.set_default_index(self.embedder['<unk>'])
             self.vec_size = len(self.embedder)
         elif embedder == 'fasttext':
             self.embedder = torchtext.vocab.FastText(language='en')
@@ -201,7 +201,7 @@ class DataSet:
         if self.embedder_name == 'fasttext':
             return embedder.itos.__contains__(token.lower())
         if self.embedder_name == 'custom':
-            return embedder[token] != embedder.get_default_index()
+            return embedder[token] != embedder['<unk>']
         else:
             return embedder.has_index_for(token.lower())
 
