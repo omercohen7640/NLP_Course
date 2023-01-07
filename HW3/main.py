@@ -110,12 +110,14 @@ def objective(trial):
     lstm_layer_num = trial.suggest_int('lstm_layer_n', low=2, high=4)
     # lstm_layer_num = 2
     ratio = trial.suggest_float('ratio', low=0.5, high=1)
+    embedding_dim = trial.suggest_int('embedding_dim', low=80, high=150)
+    pos_dim = trial.suggest_int('pos_dim', low=15, high=40)
     dataset = load_dataset(encoder=embedder)
     # print(f'ephocs={ephocs}, batch size={2**batch_size}, lr={lr}, wd_size={wd}')
     uas = train_network(dataset=dataset, epochs=ephocs, batch_size=2 ** batch_size,
                         seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1, lmbda=lmbda,
                         device=device, save_all_states=True, model_path=None, test_set='test', concat=concat,
-                        lstm_layer_n=lstm_layer_num, ratio=ratio)
+                        lstm_layer_n=lstm_layer_num, ratio=ratio, embedding_dim=embedding_dim, POS_dim=pos_dim)
     return uas
 
 
