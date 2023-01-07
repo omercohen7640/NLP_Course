@@ -73,7 +73,7 @@ def load_dataset(encoder='word2vece', batch_size=1):
     return ds
 
 
-def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, lmbda, device=None, save_all_states=True,
+def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, lmbda, embedding_dim=100, POS_dim=25, device=None, save_all_states=True,
                   model_path=None, test_set='test', batch_size=16, seed=None, LR=0.1, concat=True, lstm_layer_n=2,
                   ratio=1, tag_only=False):
     if seed is None:
@@ -81,8 +81,10 @@ def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, lmbda, device=None,
     else:
         seed = seed
     vec_size = dataset.vec_size
-    model = DependencyParser(vec_size,
-                             len(POS_LIST), concate=concat,num_layers=lstm_layer_n, ratio=ratio)
+    POS_size = len(POS_LIST)
+    # embedding_dim, POS_dim, POS_size, vocab_size=None, ratio=1, concate=True, num_layers=2, embed=False)
+    model = DependencyParser(embedding_dim=embedding_dim, POS_dim=POS_dim, POS_size=POS_size, vocab_size=vec_size,
+                             concate=concat, num_layers=lstm_layer_n, ratio=ratio, embed=True)
     trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
                         seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA, lmbda=lmbda,
                         device=device, save_all_states=save_all_states, model_path=model_path, test_set=test_set)
@@ -118,7 +120,6 @@ def objective(trial):
                         lstm_layer_n=lstm_layer_num, ratio=ratio)
     return uas
 
-
 def parameter_sweep():
     cfg.LOG.start_new_log(name='parameter_search')
     study = optuna.create_study(direction='maximize')
@@ -132,7 +133,5 @@ def main():
     train_network(dataset=dataset, epochs=args.epochs, batch_size=args.batch_size,
                   seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
                   device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set)
-
-
 if __name__ == '__main__':
     parameter_sweep()

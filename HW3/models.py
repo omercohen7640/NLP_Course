@@ -12,17 +12,15 @@ def eval_model(model, sentence):
 
 
 class DependencyParser(nn.Module):
-    def __init__(self, embedding_dim, POS_dim, ratio=1, concate=True, num_layers=2, embed=False, dict_size=None):
+    def __init__(self, embedding_dim, POS_dim, vocab_size, POS_size, ratio=1, concate=True, num_layers=2, embed=False):
         super(DependencyParser, self).__init__()
         self.embedding_dim = embedding_dim
         self.POS_dim = POS_dim
         self.embed = embed
-        self.dict_size = dict_size
-        if self.embed and dict_size is None:
-            print('Cant create embedding layer without dict size!')
-            raise NotImplementedError
+        self.vocab_size = vocab_size
         if self.embed:
-            self.embedder = nn.Embedding(num_embeddings=dict_size, embedding_dim=embedding_dim)
+            self.embedder = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
+            self.POS_embedder = nn.Embedding(num_embeddings=POS_size, embedding_dim=self.POS_dim)
         self.hidden_dim = int(self.embedding_dim*ratio)
         self.POS_hidden_dim = int(self.POS_dim*ratio)
         self.concate = concate
@@ -45,12 +43,18 @@ class DependencyParser(nn.Module):
                                                       ('relu-2', nn.ReLU()),
                                                       ('L3', nn.Linear(100, 1))]))
 
-    def forward(self, inputs: torch.Tensor,):
+    def forward(self, inputs: torch.Tensor):
 
         n_words = inputs[0].shape[1]
 
         if self.concate:
-            model_out, _ = self.encoder_words(torch.cat(word_embed, dim=2).float())  # [batch_size, seq_len, hidden_dim*2]
+            word_embed = inputs if not self.embed else torch.cat([self.embedder(inputs[0]), self.POS_embedder(inputs[1])], dim=2).float()
+        else:
+            word_embed = [None, None]
+            word_embed[0] = inputs[0] if not self.embed else self.embedder(inputs[0])
+            word_embed[1] = inputs[1] if not self.embed else self.POS_embedder(inputs[1])
+        if self.concate:
+            model_out, _ = self.encoder_words(word_embed)  # [batch_size, seq_len, hidden_dim*2]
         else:
             model_out_words, _ = self.encoder_words(word_embed[0].float())  # [batch_size, seq_len, hidden_dim*2]
             model_out_POS, _ = self.encoder_POS(word_embed[1].float())  # [batch_size, seq_len, hidden_dim*2]
