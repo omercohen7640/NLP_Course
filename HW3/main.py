@@ -45,13 +45,15 @@ parser.add_argument('--port', default='12355', help='choose port for distributed
 pickle_glove_path = "data/dataset_glove.pickle"
 pickle_word2vec_path = "data/dataset_word2vec.pickle"
 pickle_fasttext_path = "data/dataset_fasttext.pickle"
-
+pickle_custom_path = "data/dataset_custom.pickle"
 
 def load_dataset(encoder='word2vece', batch_size=1):
     if encoder == 'glove':
         pickle_path = pickle_glove_path
     elif encoder == 'word2vec':
         pickle_path = pickle_word2vec_path
+    elif encoder == 'custom':
+        pickle_path = pickle_custom_path
     else:
         pickle_path = pickle_fasttext_path
     if os.path.exists(pickle_path):
@@ -64,7 +66,7 @@ def load_dataset(encoder='word2vece', batch_size=1):
                       'comp': p_path + 'comp.unlabeled'}
         # paths_dict = {'train': p_path + 'train.labeled'}
         ds = DataSets(paths_dict=paths_dict)
-        ds.create_datsets(embedder=encoder, parsing=True)
+        ds.create_datsets(embedder_name=encoder, parsing=True)
         with open(pickle_path, 'wb') as f:
             pickle.dump(ds, f)
         #ds.create_dataloaders(batch_size=batch_size)
@@ -76,8 +78,8 @@ def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, device=None, save_a
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     else:
         seed = seed
-
-    model = DependencyParser(dataset.datasets_dict['train'].vec_size,
+    vec_size = dataset.vec_size
+    model = DependencyParser(vec_size,
                              len(POS_LIST), concate=concat,num_layers=lstm_layer_n, ratio=ratio)
     trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
                         seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA,
@@ -115,7 +117,7 @@ def parameter_sweep():
 def main():
     args = parser.parse_args()
     cfg.USER_CMD = ' '.join(sys.argv)
-    dataset = load_dataset('fasttext', args.batch_size)
+    dataset = load_dataset('custom', args.batch_size)
     train_network(dataset=dataset, epochs=args.epochs, batch_size=args.batch_size,
                   seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
                   device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set)

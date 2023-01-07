@@ -4,6 +4,7 @@ import gensim.downloader as api
 from gensim.parsing.preprocessing import RE_PUNCT
 import torch
 import torchtext
+from torchtext.vocab import build_vocab_from_iterator
 import numpy as np
 from torch.utils.data import Dataset
 import string
@@ -50,25 +51,49 @@ class DataSets:
         self.paths_dict = paths_dict
         self.datasets_dict = {}
 
-    def create_datsets(self, embedder, parsing=False):
+    def create_datsets(self, embedder_name, parsing=False):
         for dataset_name, path in self.paths_dict.items():
-            self.datasets_dict[dataset_name] = DataSet(path, parsing)
-            self.datasets_dict[dataset_name].embed_X_and_Y(embedder)
+            self.datasets_dict[dataset_name] = DataSet(path, embedder_name, parsing)
+        self.create_embedder(embedder_name, self.datasets_dict['train'].X)
+
+        for dataset_name, path in self.paths_dict.items():
+            self.datasets_dict[dataset_name].embed_X_and_Y(self.embedder, vec_size=self.vec_size)
             self.datasets_dict[dataset_name].prepare_data_for_dataloader()
             self.datasets_dict[dataset_name].data_loader = DataLoader(self.datasets_dict[dataset_name].data_for_dataloader, shuffle=True)
-            self.datasets_dict[dataset_name].embedder = None
+
 
     def create_dataloaders(self, batch_size):
         for dataset_name, path in self.paths_dict.items():
             self.datasets_dict[dataset_name].data_loader = DataLoader(
-                self.datasets_dict[dataset_name].data_for_dataloader, batch_size=batch_size)
+                self.datasets_dict[dataset_name].data_for_dataloader, batch_size=1)
 
+    def create_embedder(self, embedder, train_set):
+        self.POS_size = len(POS_LIST)
+        self.embedder_name = embedder
+        if embedder == 'glove':
+            self.embedder = api.load('glove-twitter-200')
+            self.vec_size = self.embedder.vector_size
+        elif embedder == 'word2vec':
+            self.embedder = api.load('word2vec-google-news-300')
+            self.vec_size = self.embedder.vector_size
+        elif embedder == 'custom':
+            words_list = [[tup[0] for tup in sen] for sen in train_set]
+            special_tokens = ['<unk>', '<root>']
+            self.embedder = build_vocab_from_iterator(words_list, specials=special_tokens)
+            self.embedder.set_default_index(self.embedder['<unk>'])
+            self.vec_size = len(self.embedder)
+        elif embedder == 'fasttext':
+            self.embedder = torchtext.vocab.FastText(language='en')
+            self.vec_size = self.embedder.vectors.shape[1]
+        else:
+            print(f'{embedder} is not a familier embedder')
+            raise NotImplemented
 
 class DataSet:
-    def __init__(self, path, parsing=False):
+    def __init__(self, path,embedder_name, parsing=False):
         self.data_for_dataloader = None
         self.X_vec = None
-        self.embedder = None
+        self.embedder_name = embedder_name
         # self.deleted_word_index = None
         self.path = path
         self.parsing = parsing
@@ -121,22 +146,13 @@ class DataSet:
             self.len = self.X_vec.shape[0]
         return self.len
 
-    def embed_X_and_Y(self, embedder='word2vec'):
-        self.embedder_name = embedder
-        if embedder == 'glove':
-            self.embedder = api.load('glove-twitter-200')
-            self.vec_size = self.embedder.vector_size
-        elif embedder == 'word2vec':
-            self.embedder = api.load('word2vec-google-news-300')
-            self.vec_size = self.embedder.vector_size
-        elif embedder == 'fasttext':
-            self.embedder = torchtext.vocab.FastText(language='en')
-            self.vec_size = self.embedder.vectors.shape[1]
-        else:
-            print(f'{embedder} is not a familier embedder')
-            raise NotImplemented
+
+    def embed_X_and_Y(self, embedder, vec_size):
         unknown_words = set([])
-        ROOT_embeding = self.embedder['root']
+        if self.embedder_name == 'custom':
+            ROOT_embeding = embedder['<root>']
+        else:
+            ROOT_embeding = embedder['ROOT']
         all_sentences_x_vectorized = []
         all_sentences_y_vectorized = []
         for i, sentence in enumerate(self.X):
@@ -144,23 +160,34 @@ class DataSet:
             pos_arr = [POS_LIST.index('ROOT')]
             for tup in sentence:
                 word, pos = tup
-                if self.has_index(token=word):
-                    word_vec = (self.embedder[word.lower()])
+                if self.has_index(token=word, embedder=embedder):
+                    if self.embedder_name == 'custom':
+                        word_vec = embedder[word]
+                    else:
+                        word_vec = (embedder[word.lower()])
                 else:  # if word has no embeddings
-                    if self.parsing:
-                        word_p, vec_p = self.parse(word)
+                    if self.parsing and self.embedder_name != 'custom':
+                        word_p, vec_p = self.parse(word, embedder=embedder)
                         if word_p == word:
                             unknown_words.add(word)
-                            word_vec = np.array(self.vec_size * [0])
+                            word_vec = np.array(vec_size * [0])
+                        else:
+                            word_vec = vec_p
                     else:
-                        word_vec = np.array(self.embedder.vector_size * [0])
-                if not isinstance(word_vec,np.ndarray):
+                        if self.embedder_name == 'custom':
+                            word_vec = embedder[word]
+                        else:
+                            word_vec = np.array(vec_size * [0])
+                if not isinstance(word_vec, np.ndarray):
                     word_vec = np.array(word_vec)
                 words_vec_arr.append(word_vec)
                 pos_arr.append(POS_LIST.index(pos))
 
             word_embeddings_mat = np.array(words_vec_arr)
-            pos_onehot_mat = make_pos_onehot_mat(pos_arr)
+            if self.embedder_name != 'custom':
+                pos_onehot_mat = make_pos_onehot_mat(pos_arr)
+            else:
+                pos_onehot_mat = np.array(pos_arr)
             all_sentences_x_vectorized.append((word_embeddings_mat, pos_onehot_mat))
             if self.is_tagged:
                 all_sentences_y_vectorized.append(make_y_onehot_mat(self.Y[i]))
@@ -169,18 +196,20 @@ class DataSet:
             self.Y_vec = all_sentences_y_vectorized
         self.Unknown_words = unknown_words
 
-    def has_index(self, token):
+    def has_index(self, token, embedder):
         if self.embedder_name == 'fasttext':
-            return self.embedder.itos.__contains__(token.lower())
+            return embedder.itos.__contains__(token.lower())
+        if self.embedder_name == 'custom':
+            return embedder[token] != embedder.get_default_index()
         else:
-            return self.embedder.has_index_for(token.lower())
+            return embedder.has_index_for(token.lower())
 
-    def hyphenated_words(self, word):
+    def hyphenated_words(self, word, embedder):
         sub_words = word.split('-')
         vec = 0
         for sub_w in sub_words:
             if self.has_index(sub_w.lower()):
-                vec = self.embedder[sub_w.lower()] if isinstance(vec, int) else vec + self.embedder[sub_w.lower()]
+                vec = embedder[sub_w.lower()] if isinstance(vec, int) else vec + embedder[sub_w.lower()]
         return vec / len(sub_words)
     def prepare_data_for_dataloader(self):
         data_for_dataloader=[]
@@ -194,14 +223,14 @@ class DataSet:
                 data_for_dataloader.append(x)
         self.data_for_dataloader = data_for_dataloader
 
-    def parse(self, word):
+    def parse(self, word, embedder):
         if is_number(word):  # word is a number
-            return 'number', self.embedder['number']
+            return 'number', embedder['number']
         elif '-' in word:
-            vec = self.hyphenated_words( word)
+            vec = self.hyphenated_words(word, embedder)
             return 'average', vec
         elif word[0].isupper():
-            return 'name', self.embedder['name']
+            return 'name', embedder['name']
         else:
             return word, 0
 
