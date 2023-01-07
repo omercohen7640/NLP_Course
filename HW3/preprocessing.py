@@ -61,7 +61,7 @@ class DataSets:
     def create_dataloaders(self, batch_size):
         for dataset_name, path in self.paths_dict.items():
             self.datasets_dict[dataset_name].data_loader = DataLoader(
-                self.datasets_dict[dataset_name].data_for_dataloader, batch_size=batch_size)
+                self.datasets_dict[dataset_name].data_for_dataloader, batch_size=1)
 
 
 class DataSet:

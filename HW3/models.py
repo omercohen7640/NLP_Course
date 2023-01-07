@@ -12,10 +12,17 @@ def eval_model(model, sentence):
 
 
 class DependencyParser(nn.Module):
-    def __init__(self, embedding_dim, POS_dim, ratio=1, concate=True, num_layers=2):
+    def __init__(self, embedding_dim, POS_dim, ratio=1, concate=True, num_layers=2, embed=False, dict_size=None):
         super(DependencyParser, self).__init__()
         self.embedding_dim = embedding_dim
         self.POS_dim = POS_dim
+        self.embed = embed
+        self.dict_size = dict_size
+        if self.embed and dict_size is None:
+            print('Cant create embedding layer without dict size!')
+            raise NotImplementedError
+        if self.embed:
+            self.embedder = nn.Embedding(num_embeddings=dict_size, embedding_dim=embedding_dim)
         self.hidden_dim = int(self.embedding_dim*ratio)
         self.POS_hidden_dim = int(self.POS_dim*ratio)
         self.concate = concate
@@ -38,8 +45,10 @@ class DependencyParser(nn.Module):
                                                       ('relu-2', nn.ReLU()),
                                                       ('L3', nn.Linear(100, 1))]))
 
-    def forward(self, word_embed: torch.Tensor):
-        n_words = word_embed[0].shape[1]
+    def forward(self, inputs: torch.Tensor,):
+
+        n_words = inputs[0].shape[1]
+
         if self.concate:
             model_out, _ = self.encoder_words(torch.cat(word_embed, dim=2).float())  # [batch_size, seq_len, hidden_dim*2]
         else:
@@ -60,7 +69,7 @@ class GraphLoss(nn.NLLLoss):
     def __int__(self):
         super(GraphLoss, self).__init__()
 
-    def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        masked = F.log_softmax(input, dim=1) * target
+    def forward(self, inputs: Tensor, target: Tensor) -> Tensor:
+        masked = F.log_softmax(inputs, dim=1) * target
         loss = - (torch.sum(masked) / torch.sum(target))
         return loss
