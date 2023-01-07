@@ -66,7 +66,7 @@ def load_dataset(encoder='word2vece', batch_size=1):
                       'comp': p_path + 'comp.unlabeled'}
         # paths_dict = {'train': p_path + 'train.labeled'}
         ds = DataSets(paths_dict=paths_dict)
-        ds.create_datsets(embedder=encoder, parsing=True)
+        ds.create_datsets(embedder_name=encoder, parsing=False)
         with open(pickle_path, 'wb') as f:
             pickle.dump(ds, f)
         ds.create_dataloaders(batch_size=batch_size)
@@ -103,8 +103,8 @@ def objective(trial):
     #batch_size = 5
     lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
     #lr = 0.01
-    embedder = trial.suggest_categorical('embedder',['glove','word2vec','fasttext'])
-    # embedder = 'fasttext'
+    # embedder = trial.suggest_categorical('embedder',['glove','word2vec','fasttext'])
+    embedder = 'custom'
     wd = trial.suggest_loguniform('wd', 1e-5, 1e-3)
     lmbda = trial.suggest_loguniform('lmbda', 1e-5, 0.1)
     concat = True  # 1 = concat, 0 = no_concat

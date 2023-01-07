@@ -18,9 +18,12 @@ class DependencyParser(nn.Module):
         self.POS_dim = POS_dim
         self.embed = embed
         self.vocab_size = vocab_size
+        self.POS_size = POS_size
+
+        # Embedder Init
         if self.embed:
-            self.embedder = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=embedding_dim)
-            self.POS_embedder = nn.Embedding(num_embeddings=POS_size, embedding_dim=self.POS_dim)
+            self.embedder = nn.Embedding(num_embeddings=self.vocab_size, embedding_dim=self.embedding_dim)
+            self.POS_embedder = nn.Embedding(num_embeddings=self.POS_size, embedding_dim=self.POS_dim)
         self.hidden_dim = int(self.embedding_dim*ratio)
         self.POS_hidden_dim = int(self.POS_dim*ratio)
         self.concate = concate
@@ -30,6 +33,8 @@ class DependencyParser(nn.Module):
             self.POS_dim = 0
             self.POS_hidden_dim = 0
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # BiLSTM Init
         self.encoder_words = torch.nn.LSTM(input_size=self.embedding_dim, hidden_size=self.hidden_dim, num_layers=num_layers,
                                            batch_first=True, bidirectional=True)
         self.encoder_POS = None
