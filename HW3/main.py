@@ -80,8 +80,8 @@ def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, lmbda, device=None,
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     else:
         seed = seed
-
-    model = DependencyParser(dataset.datasets_dict['train'].vec_size,
+    vec_size = dataset.vec_size
+    model = DependencyParser(vec_size,
                              len(POS_LIST), concate=concat,num_layers=lstm_layer_n, ratio=ratio)
     trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
                         seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA, lmbda=lmbda,
