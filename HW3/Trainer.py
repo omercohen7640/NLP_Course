@@ -14,11 +14,11 @@ from chu_liu_edmonds import decode_mst
 
 class NNTrainer:
     def __init__(self, model, epochs, dataset, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
-                 device, save_all_states, batch_size=32, model_path=None):
+                 device, save_all_states, lmbda=None, batch_size=32, model_path=None):
         cfg.LOG.write('NeuralNet __init__: test_set={}, epochs={},'
-                      'LR={} LRD={} WD={} MOMENTUM={} GAMMA={} '
+                      'LR={} LRD={} WD={} MOMENTUM={} GAMMA={} lambda={}'
                       'device={} model_path={}'
-                      .format(test_set, epochs, LR, LRD, WD, MOMENTUM, GAMMA, device, model_path))
+                      .format(test_set, epochs, LR, LRD, WD, MOMENTUM, GAMMA, lmbda, device, model_path))
         cfg.LOG.write('Seed = {}'.format(seed))
 
         if device == 'cpu':
@@ -31,6 +31,7 @@ class NNTrainer:
         self.LR = LR
         self.LRD = LRD
         self.WD = WD
+        self.lmbda = lmbda
         self.MOMENTUM = MOMENTUM
         self.GAMMA = GAMMA
         self.epochs = epochs
@@ -47,8 +48,10 @@ class NNTrainer:
         if model_path is None and device == 'cuda' and torch.cuda.is_available() :
             self.model = self.model.cuda()
         self.criterion = GraphLoss()
-        self.model_optimizer = optim.SGD(self.model.parameters(), lr=LR, weight_decay=WD, momentum=MOMENTUM)
-        self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer, milestones=[20, 40], gamma=GAMMA)
+        self.model_optimizer = optim.Adam(self.model.parameters(), lr=LR, weight_decay=WD)
+        # self.model_train_scheduler = optim.lr_scheduler.MultiStepLR(self.model_optimizer, milestones=[20, 40], gamma=GAMMA)
+        # lmbda_fn = lambda epoch: self.lmbda ** epoch
+        # self.model_train_scheduler = torch.optim.lr_scheduler.MultiplicativeLR(self.model_optimizer, lr_lambda=lmbda_fn)
         self.load_models()
         self.history = []
 
@@ -160,6 +163,7 @@ class NNTrainer:
         for epoch in range(0, self.epochs):
             self.train_NN(epoch, train_gen)
             last_uas = self.test_NN(epoch, test_gen)
+        self.update_best_acc(epoch, last_uas)
         return last_uas
 
 
@@ -195,14 +199,16 @@ class NNTrainer:
 
             predicted_tree, _ = decode_mst(model_out_sftmx.detach().cpu().numpy(), model_out_sftmx.shape[-1], False)
 
-            for j in (predicted_tree == target.argmax(dim=2).detach().cpu().numpy()):
+            for j in (predicted_tree == target.argmax(dim=1).detach().cpu().numpy()):
                 self.history = np.append(self.history, j)
 
             # measure accuracy and record logs
-            self.measure_accuracy_log(predicted_tree, model_loss_sentence.detach().cpu().numpy(), target.argmax(dim=2).detach().cpu().numpy(), images[0].size(0), mode='train')
+            self.measure_accuracy_log(predicted_tree, model_loss_sentence.detach().cpu().numpy(), target.argmax(dim=1).detach().cpu().numpy(), images[0].size(0), mode='train')
 
             # compute gradient and do SGD step
             if (i+1) % self.batch_size == 0:
+                model_loss = model_loss/self.batch_size
+
                 self.zero_gradients()
 
                 self.backward_compute(model_loss)
@@ -251,11 +257,13 @@ class NNTrainer:
                 model_loss = self.compute_loss(model_out, target)
                 model_out_sftmx = nn.functional.softmax(model_out, dim=1)
                 predicted_tree, _ = decode_mst(model_out_sftmx.detach().cpu().numpy(), model_out_sftmx.shape[-1], False)
-
-                for j in (predicted_tree == target.argmax(dim=2).detach().cpu().numpy()):
+                predicted_tree[0] = 0
+                for j in (predicted_tree == target.argmax(dim=1).detach().cpu().numpy()):
                     self.history = np.append(self.history, j)
                 # measure accuracy and record logs
-                self.measure_accuracy_log(predicted_tree, model_loss.detach().cpu().numpy(), target.argmax(dim=2).detach().cpu().numpy(), images[0].size(0),
+                # curr_uas = np.sum(self.history) / len(self.history)
+                # cfg.LOG.write(curr_uas)
+                self.measure_accuracy_log(predicted_tree, model_loss.detach().cpu().numpy(), target.argmax(dim=1).detach().cpu().numpy(), images[0].size(0),
                                           mode='test')
 
                 # measure elapsed time
@@ -271,7 +279,6 @@ class NNTrainer:
             stop = timeit.default_timer()
             uas_acc = np.sum(self.history) / len(self.history)
 
-            self.update_best_acc(epoch, uas_acc)
             cfg.LOG.write("Epoch {} Testing UAS accuracy is : {}.3f".format(epoch, uas_acc))
 
             cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))

@@ -12,10 +12,17 @@ def eval_model(model, sentence):
 
 
 class DependencyParser(nn.Module):
-    def __init__(self, embedding_dim, POS_dim, ratio=1, concate=True, num_layers=2):
+    def __init__(self, embedding_dim, POS_dim, ratio=1, concate=True, num_layers=2, embed=False, dict_size=None):
         super(DependencyParser, self).__init__()
         self.embedding_dim = embedding_dim
         self.POS_dim = POS_dim
+        self.embed = embed
+        self.dict_size = dict_size
+        if self.embed and dict_size is None:
+            print('Cant create embedding layer without dict size!')
+            raise NotImplementedError
+        if self.embed:
+            self.embedder = nn.Embedding(num_embeddings=dict_size, embedding_dim=embedding_dim)
         self.hidden_dim = int(self.embedding_dim*ratio)
         self.POS_hidden_dim = int(self.POS_dim*ratio)
         self.concate = concate
@@ -32,14 +39,16 @@ class DependencyParser(nn.Module):
             self.encoder_POS = torch.nn.LSTM(input_size=self.POS_dim, hidden_size=self.POS_hidden_dim, num_layers=num_layers,
                                              batch_first=True, bidirectional=True)
         fc_in_size = (self.POS_hidden_dim + self.hidden_dim)*4
-        self.edge_scorer = nn.Sequential(OrderedDict([('L1', nn.Linear(fc_in_size, int(fc_in_size/2))),
+        self.edge_scorer = nn.Sequential(OrderedDict([('L1', nn.Linear(fc_in_size, int(fc_in_size/5))),
                                                       ('relu-1', nn.ReLU()),
-                                                      ('L2', nn.Linear(int(fc_in_size/2), int(fc_in_size/4))),
+                                                      ('L2', nn.Linear(int(fc_in_size/5), 100)),
                                                       ('relu-2', nn.ReLU()),
-                                                      ('L3', nn.Linear(int(fc_in_size/4), 1))]))
+                                                      ('L3', nn.Linear(100, 1))]))
 
-    def forward(self, word_embed: torch.Tensor):
-        n_words = word_embed[0].shape[1]
+    def forward(self, inputs: torch.Tensor,):
+
+        n_words = inputs[0].shape[1]
+
         if self.concate:
             model_out, _ = self.encoder_words(torch.cat(word_embed, dim=2).float())  # [batch_size, seq_len, hidden_dim*2]
         else:
@@ -49,7 +58,7 @@ class DependencyParser(nn.Module):
         score_mat = torch.zeros([word_embed[0].shape[1]]*2, device=self.device)
         vec1 = model_out.squeeze().repeat([1, n_words]).reshape(-1, (self.POS_hidden_dim + self.hidden_dim)*2)
         vec2 = model_out.squeeze().repeat([n_words, 1])
-        fc_input = torch.cat([vec1,vec2],dim=1)
+        fc_input = torch.cat([vec1, vec2], dim=1)
         score_mat = self.edge_scorer(fc_input).reshape((n_words,n_words))
         return score_mat
 
@@ -60,7 +69,7 @@ class GraphLoss(nn.NLLLoss):
     def __int__(self):
         super(GraphLoss, self).__init__()
 
-    def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        masked = F.log_softmax(input, dim=1) * target
+    def forward(self, inputs: Tensor, target: Tensor) -> Tensor:
+        masked = F.log_softmax(inputs, dim=1) * target
         loss = - (torch.sum(masked) / torch.sum(target))
         return loss

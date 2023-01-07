@@ -59,67 +59,80 @@ def load_dataset(encoder='word2vece', batch_size=1):
     if os.path.exists(pickle_path):
         with open(pickle_path, 'rb') as f:
             ds = pickle.load(f)
-        #ds.create_dataloaders(batch_size=batch_size)
+        ds.create_dataloaders(batch_size=batch_size)
     else:
         p_path = 'data/'
         paths_dict = {'train': p_path + 'train.labeled', 'test': p_path + 'test.labeled',
                       'comp': p_path + 'comp.unlabeled'}
         # paths_dict = {'train': p_path + 'train.labeled'}
         ds = DataSets(paths_dict=paths_dict)
-        ds.create_datsets(embedder_name=encoder, parsing=True)
+        ds.create_datsets(embedder=encoder, parsing=True)
         with open(pickle_path, 'wb') as f:
             pickle.dump(ds, f)
-        #ds.create_dataloaders(batch_size=batch_size)
+        ds.create_dataloaders(batch_size=batch_size)
     return ds
 
-def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, device=None, save_all_states=True,
-                  model_path=None, test_set='test', batch_size=16, seed=None, LR=0.1,concat=True, lstm_layer_n=2, ratio=1, tag_only=False):
+
+def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, lmbda, device=None, save_all_states=True,
+                  model_path=None, test_set='test', batch_size=16, seed=None, LR=0.1, concat=True, lstm_layer_n=2,
+                  ratio=1, tag_only=False):
     if seed is None:
         seed = torch.random.initial_seed() & ((1 << 63) - 1)
     else:
         seed = seed
-    vec_size = dataset.vec_size
-    model = DependencyParser(vec_size,
+
+    model = DependencyParser(dataset.datasets_dict['train'].vec_size,
                              len(POS_LIST), concate=concat,num_layers=lstm_layer_n, ratio=ratio)
     trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
-                        seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA,
+                        seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA, lmbda=lmbda,
                         device=device, save_all_states=save_all_states, model_path=model_path, test_set=test_set)
     uas = trainer.train()
     return uas
     # raise NotImplementedError
     # tagging = trainer.tag_test()
 
+
 def objective(trial):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    cfg.LOG.write("running on "+device)
+    cfg.LOG.write("running on " + device)
     ephocs = trial.suggest_int('ephocs', low=10, high=50)
-    # ephocs = 1
+    #ephocs = 1
     batch_size = trial.suggest_int('batch_size', low=3, high=8)
+    #batch_size = 5
     lr = trial.suggest_loguniform('lr', 1e-5, 1e-1)
-    embedder = trial.suggest_categorical('embedder',['glove','word2vec'])
+    #lr = 0.01
+    embedder = trial.suggest_categorical('embedder',['glove','word2vec','fasttext'])
+    # embedder = 'fasttext'
     wd = trial.suggest_loguniform('wd', 1e-5, 1e-3)
-    concat = bool(trial.suggest_int('concat',low=0,high=1)) # 1 = concat, 0 = no_concat
+    lmbda = trial.suggest_loguniform('lmbda', 1e-5, 0.1)
+    concat = True  # 1 = concat, 0 = no_concat
     # concat = 0
     lstm_layer_num = trial.suggest_int('lstm_layer_n', low=2, high=4)
+    # lstm_layer_num = 2
     ratio = trial.suggest_float('ratio', low=0.5, high=1)
     dataset = load_dataset(encoder=embedder)
     # print(f'ephocs={ephocs}, batch size={2**batch_size}, lr={lr}, wd_size={wd}')
-    uas = train_network(dataset=dataset, epochs=ephocs, batch_size=2**batch_size,
-                  seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1,
-                  device=device, save_all_states=True, model_path=None, test_set='test',concat=concat, lstm_layer_n=lstm_layer_num, ratio=ratio)
+    uas = train_network(dataset=dataset, epochs=ephocs, batch_size=2 ** batch_size,
+                        seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1, lmbda=lmbda,
+                        device=device, save_all_states=True, model_path=None, test_set='test', concat=concat,
+                        lstm_layer_n=lstm_layer_num, ratio=ratio)
     return uas
+
 
 def parameter_sweep():
     cfg.LOG.start_new_log(name='parameter_search')
     study = optuna.create_study(direction='maximize')
-    study.optimize(objective, n_trials=30)
+    study.optimize(objective, n_trials=50)
+
 
 def main():
     args = parser.parse_args()
     cfg.USER_CMD = ' '.join(sys.argv)
-    dataset = load_dataset('custom', args.batch_size)
+    dataset = load_dataset('fasttext', args.batch_size)
     train_network(dataset=dataset, epochs=args.epochs, batch_size=args.batch_size,
                   seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
                   device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set)
+
+
 if __name__ == '__main__':
-    main()
+    parameter_sweep()
