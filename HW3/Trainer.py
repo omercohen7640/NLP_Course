@@ -61,7 +61,6 @@ class NNTrainer:
                 chkp = torch.load(self.model_path, map_location=self.device)
             else:
                 assert 0, 'Error: Cannot find model path {}'.format(self.model_path)
-            assert (self.arch == chkp['arch'])
             try:
                 self.model.load_state_dict(chkp['state_dict'], strict=True)
                 self.model = self.model.cuda() if self.device == torch.device('cuda') else self.model
