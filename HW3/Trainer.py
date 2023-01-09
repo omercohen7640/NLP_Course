@@ -45,7 +45,7 @@ class NNTrainer:
         self.test_set = test_set
         self.model = model
         self.best_acc = 0
-        if model_path is None and device == 'cuda' and torch.cuda.is_available() :
+        if model_path is None and device == 'cuda' and torch.cuda.is_available():
             self.model = self.model.cuda()
         self.criterion = GraphLoss()
         self.model_optimizer = optim.Adam(self.model.parameters(), lr=LR, weight_decay=WD)
@@ -193,12 +193,13 @@ class NNTrainer:
                 model_loss = torch.zeros(1).to(self.device)
 
             model_out = self.compute_forward(images).to(self.device)
-            model_out_sftmx = nn.functional.softmax(model_out, dim=1)
+            model_out_sftmx = nn.functional.softmax(model_out, 0)
 
             model_loss_sentence = self.compute_loss(model_out, target)
             model_loss += model_loss_sentence
 
-            predicted_tree, _ = decode_mst(model_out_sftmx.detach().cpu().numpy(), model_out_sftmx.shape[-1], False)
+            predicted_tree, _ = decode_mst(model_out.detach().cpu().numpy(), model_out.shape[-1], False)
+            predicted_tree[0] = 0
 
             for j in (predicted_tree == target.argmax(dim=1).detach().cpu().numpy()):
                 self.history = np.append(self.history, j)
@@ -256,8 +257,8 @@ class NNTrainer:
                 model_out = self.compute_forward(images).to(self.device)
 
                 model_loss = self.compute_loss(model_out, target)
-                model_out_sftmx = nn.functional.softmax(model_out, dim=1)
-                predicted_tree, _ = decode_mst(model_out_sftmx.detach().cpu().numpy(), model_out_sftmx.shape[-1], False)
+                # model_out_sftmx = nn.functional.softmax(model_out, dim=0)
+                predicted_tree, _ = decode_mst(model_out.detach().cpu().numpy(), model_out.shape[-1], False)
                 predicted_tree[0] = 0
                 for j in (predicted_tree == target.argmax(dim=1).detach().cpu().numpy()):
                     self.history = np.append(self.history, j)

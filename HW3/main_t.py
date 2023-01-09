@@ -58,7 +58,7 @@ def load_dataset(encoder='word2vece', batch_size=1):
     #     pickle_path = pickle_fasttext_path
 
     p_path = 'data/'
-    paths_dict = {'train': p_path + 'train_small.labeled', 'test': p_path + 'test.labeled',
+    paths_dict = {'train': p_path + 'train_n_test.labeled', 'test': p_path + 'test.labeled',
                   'comp': p_path + 'comp.unlabeled'}
     # # paths_dict = {'train': p_path + 'train.labeled'}
     ds = DataSets(paths_dict=paths_dict)
@@ -129,17 +129,17 @@ def main():
     cfg.LOG.start_new_log(name='parameter_search')
     device = "cuda" if torch.cuda.is_available() else "cpu"
     cfg.LOG.write("running on " + device)
-    ephocs = 30
-    batch_size = 1
-    lr = 5e-3 
+    ephocs = 50
+    batch_size = 3
+    lr = 0.001223556028065839
+    wd = 8.95059399613521e-05
+    lmbda = 0.000337385216170472 
+    lstm_layer_num =  3
+    ratio = 0.9088181054928288
+    embedding_dim = 86
+    pos_dim = 22
     embedder = 'custom'
-    wd = 1e-3 
-    lmbda = 1e-3 
     concat = True  # 1 = concat, 0 = no_concat
-    lstm_layer_num = 2
-    ratio = 1 
-    embedding_dim = 100 
-    pos_dim = 25
     dataset = load_dataset(encoder=embedder)
     uas = train_network(dataset=dataset, epochs=ephocs, batch_size=2 ** batch_size, trial_num=90,
                         seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1, lmbda=lmbda,
