@@ -76,7 +76,7 @@ def get_word(dataset, index):
     return dataset.datasets_dict['test'].original_words[index]
 
 def write_comp_file(tagging, dataset):
-    name = './comp_203860721_308427128_old.tagged'
+    name = './comp_203860721_308427128_old.labeled'
     f = open(name, 'w+')
     # untagged_words = dataset.datasets_dict['test'].deleted_word_index
     empty_lines = dataset.datasets_dict['test'].empty_lines
