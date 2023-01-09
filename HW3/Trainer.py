@@ -158,7 +158,7 @@ class NNTrainer:
             cfg.LOG.write("epochs argument missing")
             return
         train_gen = self.dataset.datasets_dict['train'].data_loader
-        test_gen = self.dataset.datasets_dict[self.test_set].data_loader
+        test_gen = self.dataset.datasets_dict['test'].data_loader
         last_uas = None
         for epoch in range(0, self.epochs):
             self.train_NN(epoch, train_gen)
@@ -285,17 +285,18 @@ class NNTrainer:
             cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))
         return uas_acc
 
-    def tag_test(self):
-
-        dataset = torch.tensor(self.dataset.datasets_dict['test'].X_vec_to_train, dtype=torch.float32)
-        print("Dataset not Implemented")
-        raise NotImplementedError
-        self.test_NN(0, NNDataset(1, self.dataset.datasets_dict['train'], self.dataset.datasets_dict[self.test_set]).testset(self.batch_size))
+    def tag_test(self, test_set):
+        tag_loader = self.dataset.datasets_dict[test_set].data_loader
         with torch.no_grad():
-            tagging = []
-            for i, word in enumerate(dataset):
+            tagging = np.ndarray((0,))
+            for i, samples, in enumerate(tag_loader):
+                if self.dataset.datasets_dict[test_set].is_tagged:
+                    samples = samples[0]
+                if self.device == torch.device('cuda'):
+                    samples[0] = samples[0].cuda(non_blocking=True, device=self.device)
+                    samples[1] = samples[1].cuda(non_blocking=True, device=self.device)
+                model_out = self.compute_forward(samples).to(self.device)
+                predicted_tree, _ = decode_mst(model_out.detach().cpu().numpy(), model_out.shape[-1], False)
+                tagging = np.append(tagging, predicted_tree[1:], axis=0)
 
-                model_out = self.compute_forward(word)
-                _, pred = model_out.topk(1, 0, True, True)
-                tagging += [int(i.item()) for i in pred]
         return tagging

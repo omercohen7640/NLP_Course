@@ -59,7 +59,7 @@ def load_dataset(encoder='word2vece', batch_size=1):
     if os.path.exists(pickle_path):
         with open(pickle_path, 'rb') as f:
             ds = pickle.load(f)
-        ds.create_dataloaders(batch_size=batch_size)
+        ds.create_dataloaders(batch_size=batch_size,shuffle=False)
     else:
         p_path = 'data/'
         paths_dict = {'train': p_path + 'train_n_test.labeled', 'test': p_path + 'test.labeled',
@@ -92,8 +92,9 @@ def write_comp_file(tagging, dataset):
                 f.write('{}\n'.format(word))
             else:
                 tag = tagging[tagging_index]
-                f.write('{}\t{}\t_\t{}\t_\t_\t{}\t_\t_\t_\n'.format(p, word, POS, tag))
+                f.write('{}\t{}\t_\t{}\t_\t_\t{}\t_\t_\t_\n'.format(p, word, POS, int(tag)))
                 tagging_index += 1
+    f.write('\n')
     f.close()
 
 def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, embedding_dim=100, POS_dim=25, device=None, save_all_states=True,
@@ -175,5 +176,6 @@ def main():
                   seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1,
                   device=device, save_all_states=True, model_path=args.model_path, test_set='test', concat=concat,
                   lstm_layer_n=lstm_layer_num, ratio=ratio, embedding_dim=embedding_dim, POS_dim=pos_dim)
+
 if __name__ == '__main__':
     main()
