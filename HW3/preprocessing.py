@@ -62,10 +62,14 @@ class DataSets:
             self.datasets_dict[dataset_name].data_loader = DataLoader(self.datasets_dict[dataset_name].data_for_dataloader, shuffle=True)
 
 
-    def create_dataloaders(self, batch_size):
+    def create_dataloaders(self, batch_size, shuffle=True):
         for dataset_name, path in self.paths_dict.items():
-            self.datasets_dict[dataset_name].data_loader = DataLoader(
-                self.datasets_dict[dataset_name].data_for_dataloader, batch_size=1, shuffle=True)
+            if dataset_name != 'comp':
+                self.datasets_dict[dataset_name].data_loader = DataLoader(
+                    self.datasets_dict[dataset_name].data_for_dataloader, batch_size=1, shuffle=shuffle)
+            else:
+                self.datasets_dict[dataset_name].data_loader = DataLoader(
+                    self.datasets_dict[dataset_name].data_for_dataloader, batch_size=1, shuffle=False)
 
     def create_embedder(self, embedder, train_set):
         self.POS_size = len(POS_LIST)
@@ -81,7 +85,7 @@ class DataSets:
             special_tokens = ['<unk>', '<root>']
             words_list.append(special_tokens)
             self.embedder = build_vocab_from_iterator(words_list)
-            # self.embedder.set_default_index(self.embedder['<unk>'])
+            self.embedder.set_default_index(self.embedder['<unk>'])
             self.vec_size = len(self.embedder)
         elif embedder == 'fasttext':
             self.embedder = torchtext.vocab.FastText(language='en')
@@ -114,7 +118,7 @@ class DataSet:
                 if line == '':  # empty line
                     c = c + 1
                     self.empty_lines.append(c)
-                    self.original_words.append('')
+                    self.original_words.append(('', '', ''))
                     all_sentences_x.append(sentence_x)
                     sentence_x = []
                     if self.is_tagged:
@@ -124,7 +128,7 @@ class DataSet:
                     line_array = line.split('\t')
                     c = c + 1
                     word = line_array[TOKEN]
-                    self.original_words.append(word)
+                    self.original_words.append((line_array[TOKEN_C], word, line_array[TOKEN_POS]))
                     x_tuple = (word, line_array[TOKEN_POS])
                     sentence_x.append(x_tuple)
                     if self.is_tagged:

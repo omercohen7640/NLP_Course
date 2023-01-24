@@ -45,7 +45,7 @@ class NNTrainer:
         self.test_set = test_set
         self.model = model
         self.best_acc = 0
-        if model_path is None and device == 'cuda' and torch.cuda.is_available() :
+        if model_path is None and device == 'cuda' and torch.cuda.is_available():
             self.model = self.model.cuda()
         self.criterion = GraphLoss()
         self.model_optimizer = optim.Adam(self.model.parameters(), lr=LR, weight_decay=WD)
@@ -61,7 +61,6 @@ class NNTrainer:
                 chkp = torch.load(self.model_path, map_location=self.device)
             else:
                 assert 0, 'Error: Cannot find model path {}'.format(self.model_path)
-            assert (self.arch == chkp['arch'])
             try:
                 self.model.load_state_dict(chkp['state_dict'], strict=True)
                 self.model = self.model.cuda() if self.device == torch.device('cuda') else self.model
@@ -159,7 +158,7 @@ class NNTrainer:
             cfg.LOG.write("epochs argument missing")
             return
         train_gen = self.dataset.datasets_dict['train'].data_loader
-        test_gen = self.dataset.datasets_dict[self.test_set].data_loader
+        test_gen = self.dataset.datasets_dict['test'].data_loader
         last_uas = None
         for epoch in range(0, self.epochs):
             self.train_NN(epoch, train_gen)
@@ -193,12 +192,13 @@ class NNTrainer:
                 model_loss = torch.zeros(1).to(self.device)
 
             model_out = self.compute_forward(images).to(self.device)
-            model_out_sftmx = nn.functional.softmax(model_out, dim=1)
+            model_out_sftmx = nn.functional.softmax(model_out, 0)
 
             model_loss_sentence = self.compute_loss(model_out, target)
             model_loss += model_loss_sentence
 
-            predicted_tree, _ = decode_mst(model_out_sftmx.detach().cpu().numpy(), model_out_sftmx.shape[-1], False)
+            predicted_tree, _ = decode_mst(model_out.detach().cpu().numpy(), model_out.shape[-1], False)
+            predicted_tree[0] = 0
 
             for j in (predicted_tree == target.argmax(dim=1).detach().cpu().numpy()):
                 self.history = np.append(self.history, j)
@@ -256,8 +256,8 @@ class NNTrainer:
                 model_out = self.compute_forward(images).to(self.device)
 
                 model_loss = self.compute_loss(model_out, target)
-                model_out_sftmx = nn.functional.softmax(model_out, dim=1)
-                predicted_tree, _ = decode_mst(model_out_sftmx.detach().cpu().numpy(), model_out_sftmx.shape[-1], False)
+                # model_out_sftmx = nn.functional.softmax(model_out, dim=0)
+                predicted_tree, _ = decode_mst(model_out.detach().cpu().numpy(), model_out.shape[-1], False)
                 predicted_tree[0] = 0
                 for j in (predicted_tree == target.argmax(dim=1).detach().cpu().numpy()):
                     self.history = np.append(self.history, j)
@@ -285,17 +285,18 @@ class NNTrainer:
             cfg.LOG.write('Total Test Time: {:6.2f} seconds'.format(epoch, stop - start))
         return uas_acc
 
-    def tag_test(self):
-
-        dataset = torch.tensor(self.dataset.datasets_dict['test'].X_vec_to_train, dtype=torch.float32)
-        print("Dataset not Implemented")
-        raise NotImplementedError
-        self.test_NN(0, NNDataset(1, self.dataset.datasets_dict['train'], self.dataset.datasets_dict[self.test_set]).testset(self.batch_size))
+    def tag_test(self, test_set):
+        tag_loader = self.dataset.datasets_dict[test_set].data_loader
         with torch.no_grad():
-            tagging = []
-            for i, word in enumerate(dataset):
+            tagging = np.ndarray((0,))
+            for i, samples, in enumerate(tag_loader):
+                if self.dataset.datasets_dict[test_set].is_tagged:
+                    samples = samples[0]
+                if self.device == torch.device('cuda'):
+                    samples[0] = samples[0].cuda(non_blocking=True, device=self.device)
+                    samples[1] = samples[1].cuda(non_blocking=True, device=self.device)
+                model_out = self.compute_forward(samples).to(self.device)
+                predicted_tree, _ = decode_mst(model_out.detach().cpu().numpy(), model_out.shape[-1], False)
+                tagging = np.append(tagging, predicted_tree[1:], axis=0)
 
-                model_out = self.compute_forward(word)
-                _, pred = model_out.topk(1, 0, True, True)
-                tagging += [int(i.item()) for i in pred]
         return tagging
