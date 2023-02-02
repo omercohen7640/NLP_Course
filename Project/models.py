@@ -1,14 +1,19 @@
+from typing import Optional, Any, Union
+import numpy as np
 import torch.nn
 from torch import nn, Tensor
 from torch.nn import functional as F
-from transformers import EncoderDecoderModel, EncoderDecoderConfig, PretrainedConfig, BertConfig, GPT2Config, AutoTokenizer, GPT2Tokenizer
+from transformers import EncoderDecoderModel, EncoderDecoderConfig, PretrainedConfig, BertConfig, GPT2Config, \
+    AutoTokenizer, GPT2Tokenizer, DataCollatorForSeq2Seq, PreTrainedTokenizerBase
 from collections import OrderedDict
 
+from transformers.utils import PaddingStrategy
 
-def eval_model(model, sentence):
-    _, score_mat = model(sentence)
-    predicted_tree = decode_mst(score_mat.detach().numpy(), score_mat.shape[-1], False)
-    return predicted_tree
+
+# def eval_model(model, sentence):
+#     _, score_mat = model(sentence)
+#     predicted_tree = decode_mst(score_mat.detach().numpy(), score_mat.shape[-1], False)
+#     return predicted_tree
 
 
 class CustomEncoderDecoder(nn.Module):
@@ -48,16 +53,17 @@ class GraphLoss(nn.NLLLoss):
 
 
 class EncDec(nn.Module):
-    def __init__(self,enc="deepset/gbert-large", dec="gpt2"):
+    def __init__(self, enc="deepset/gbert-large", dec="bert-large-cased"):
         super(EncDec, self).__init__()
         self.enc_tokenizer = AutoTokenizer.from_pretrained(enc)
-        self.dec_tokenizer = GPT2Tokenizer.from_pretrained(dec)
+        self.dec_tokenizer = AutoTokenizer.from_pretrained(dec)
         self.create_encoder_config(enc)
         self.create_decoder_config(dec)
         self.enc_dec_config = EncoderDecoderConfig.from_encoder_decoder_configs(self.enc_config, self.dec_config)
         self.enc_dec_model = EncoderDecoderModel.from_encoder_decoder_pretrained(config=self.enc_dec_config,
                                                                                  encoder_pretrained_model_name_or_path=enc,
                                                                                  decoder_pretrained_model_name_or_path=dec)
+        self.som = 1
         # self.enc_dec_model = EncoderDecoderModel.from_encoder_decoder_pretrained(encoder=enc, decoder=dec)
 
     def forward(self, inc_inputs: torch.Tensor, dec_inputs: torch.Tensor):
@@ -73,7 +79,7 @@ class EncDec(nn.Module):
         self.enc_config = enc_config
 
     def create_decoder_config(self, name):
-        dec_config = GPT2Config()
+        dec_config = BertConfig()
         dec_config.name_or_path = name
         dec_config.is_encoder_decoder = True
         dec_config.is_decoder = True

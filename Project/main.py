@@ -6,9 +6,9 @@ import sys
 import os
 from Trainer import NNTrainer
 from models import *
-
-# import optuna
-
+import evaluate
+from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
+from preprocessing import CustomDataset
 def main2():
     model = EncDec()
     print('hi')
@@ -51,39 +51,6 @@ parser.add_argument('--tag_only', default=0, type=int, help='do not run train, o
 parser.add_argument('--v', default=0, type=int, help='verbosity level (0,1,2) (default:0)')
 parser.add_argument('--port', default='12355', help='choose port for distributed run')
 
-pickle_glove_path = "data/dataset_glove.pickle"
-pickle_word2vec_path = "data/dataset_word2vec.pickle"
-pickle_fasttext_path = "data/dataset_fasttext.pickle"
-pickle_custom_path = "data/dataset_custom.pickle"
-
-def load_dataset(encoder='word2vece', batch_size=1):
-    #TODO: fix dataset loaders
-    raise NotImplementedError
-
-    if encoder == 'glove':
-        pickle_path = pickle_glove_path
-    elif encoder == 'word2vec':
-        pickle_path = pickle_word2vec_path
-    elif encoder == 'custom':
-        pickle_path = pickle_custom_path
-    else:
-        pickle_path = pickle_fasttext_path
-    if os.path.exists(pickle_path):
-        with open(pickle_path, 'rb') as f:
-            ds = pickle.load(f)
-        ds.create_dataloaders(batch_size=batch_size,shuffle=False)
-    else:
-        p_path = 'data/'
-        paths_dict = {'train': p_path + 'train_n_test.labeled', 'test': p_path + 'test.labeled',
-                      'comp': p_path + 'comp.unlabeled'}
-        # paths_dict = {'train': p_path + 'train.labeled'}
-        ds = DataSets(paths_dict=paths_dict)
-        ds.create_datsets(embedder_name=encoder, parsing=False)
-        with open(pickle_path, 'wb') as f:
-            pickle.dump(ds, f)
-        ds.create_dataloaders(batch_size=batch_size)
-    return ds
-
 def get_word(dataset, index):
     return dataset.datasets_dict['test'].original_words[index]
 
@@ -111,24 +78,6 @@ def write_comp_file(tagging, dataset):
     f.write('\n')
     f.close()
 
-def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, embedding_dim=100, device=None, save_all_states=True,
-                  model_path=None, test_set='test', batch_size=16, seed=None, LR=0.1, concat=True, lstm_layer_n=2,
-                  ratio=1.0, tag_only=False):
-    if seed is None:
-        seed = torch.random.initial_seed() & ((1 << 63) - 1)
-    else:
-        seed = seed
-    vec_size = dataset.vec_size
-    model = CustomEncoderDecoder(embedding_dim=embedding_dim, vocab_size=vec_size,
-                                 num_layers=lstm_layer_n, embed=True)
-    trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
-                        seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA, lmbda=None,
-                        device=device, save_all_states=save_all_states, model_path=model_path, test_set=test_set)
-    if model_path is None:
-        bleu_acc = trainer.train()
-        trainer.plot_results(header='trial_num{}'.format(0))
-    tagging = trainer.tag_test(test_set)
-    write_comp_file(tagging, dataset)
 
 
 
@@ -166,13 +115,64 @@ def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, embedding_dim=100, 
 #     study.optimize(objective, n_trials=50)
 
 
+
+
+bleu = evaluate.load("bleu")
+
+def compute_metrics(pred):
+    labels_ids = pred.label_ids
+    pred_ids = pred.predictions
+
+    return bleu.compute(predictions=pred_ids, references=labels_ids)
+def train_network(training_args, model, train_data, val_data, model_path=None):
+    if model_path is not None:
+        trainer = Seq2SeqTrainer(
+            model=model,
+            args=training_args,
+            compute_metrics=compute_metrics,
+            train_dataset=train_data,
+            eval_dataset=val_data,
+        )
+        trainer.train()
+    if model_path is None:
+        bleu_acc = trainer.train()
+        trainer.plot_results(header='trial_num{}'.format(0))
+    val_tag = CustomDataset('./data/val.unlabeled')
+    comp = CustomDataset('./data/comp.unlabeled')
+    for data in [comp, val_tag]:
+        tagging = model.generate(data)
+        write_comp_file(tagging, data)
+
+
 def main():
     args = parser.parse_args()
-    cfg.USER_CMD = ' '.join(sys.argv)
-    dataset = load_dataset(args.encoder, args.batch_size)
-    train_network(dataset=dataset, epochs=args.epochs, batch_size=args.batch_size,
-                  seed=args.seed, LR=args.LR, LRD=args.LRD, WD=args.WD, MOMENTUM=args.MOMENTUM, GAMMA=args.GAMMA,
-                  device=args.device, save_all_states=True, model_path=args.model_path, test_set=args.test_set)
+    batch_size = args.batch_size
+    training_args = Seq2SeqTrainingArguments(
+        predict_with_generate=True,
+        evaluation_strategy="steps",
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=batch_size,
+        fp16=True,
+        output_dir="./",
+        logging_steps=2,
+        save_steps=10,
+        eval_steps=4,
+        # logging_steps=1000,
+        # save_steps=500,
+        # eval_steps=7500,
+        # warmup_steps=2000,
+        # save_total_limit=3,
+    )
+
+    model = EncDec()
+
+    train_data = CustomDataset(path='./data/train.labeled')
+    val_data = CustomDataset(path='./data/val.labeled')
+    train_network(training_args, model, train_data, val_data, args.model_path)
+
+
+
+
 
 
 if __name__ == '__main__':

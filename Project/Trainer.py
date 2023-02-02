@@ -9,7 +9,7 @@ from torch import nn, optim
 import Config as cfg
 from models import GraphLoss
 from StatsLogger import Model_StatsLogger
-
+from transformers import *
 class NNTrainer:
     def __init__(self, model, epochs, dataset, test_set, seed, LR, LRD, WD, MOMENTUM, GAMMA,
                  device, save_all_states, lmbda=None, batch_size=32, model_path=None):
@@ -291,3 +291,4 @@ class NNTrainer:
                 tagging = np.append(tagging, predicted_tree[1:], axis=0)
 
         return tagging
+
