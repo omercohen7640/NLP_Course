@@ -2,7 +2,7 @@ from transformers import AutoTokenizer
 import torch
 from torchtext.data.utils import get_tokenizer
 from torchtext.vocab import build_vocab_from_iterator
-
+from torch.utils.data import Dataset
 from typing import Iterable, List
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
@@ -13,6 +13,18 @@ GER_INIT = "German:"
 ENG_INIT = "English:"
 
 CLS_IDX, MASK_IDX, PAD_IDX, SEP_IDX, UNK_IDX = (102, 104, 0, 103, 101)
+
+class CustomDataset(Dataset):
+    def __init__(self,path):
+        self.path = path
+        self.texts = get_text_from_file(path)
+        self.name = path.split('.')[0]
+    def __len__(self):
+        return len(self.texts)
+    def __getitem__(self, item):
+        src_sen, tgt_sen = self.texts[item]
+        return src_sen, tgt_sen
+
 
 def get_dataloader(path,batch_size):
     texts = get_text_from_file(path)
