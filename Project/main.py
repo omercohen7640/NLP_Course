@@ -1,3 +1,4 @@
+from preprocessing import get_dataloader
 import Config as cfg
 import pickle
 import argparse
@@ -5,7 +6,14 @@ import sys
 import os
 from Trainer import NNTrainer
 from models import *
-import optuna
+
+# import optuna
+
+def main2():
+    model = EncDec()
+    print('hi')
+
+
 
 dataset_dict = ['test',
                 'comp']
@@ -168,4 +176,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main2()
