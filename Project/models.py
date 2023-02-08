@@ -63,7 +63,6 @@ class EncDec(nn.Module):
         self.enc_dec_model = EncoderDecoderModel.from_encoder_decoder_pretrained(config=self.enc_dec_config,
                                                                                  encoder_pretrained_model_name_or_path=enc,
                                                                                  decoder_pretrained_model_name_or_path=dec)
-        self.som = 1
         # self.enc_dec_model = EncoderDecoderModel.from_encoder_decoder_pretrained(encoder=enc, decoder=dec)
 
     def forward(self, inc_inputs: torch.Tensor, dec_inputs: torch.Tensor):

@@ -13,7 +13,8 @@ def main2():
     model = EncDec()
     print('hi')
 
-
+train_path = './data/train.pkl'
+val_path = './data/val.pkl'
 
 dataset_dict = ['test',
                 'comp']
@@ -125,16 +126,17 @@ def compute_metrics(pred):
 
     return bleu.compute(predictions=pred_ids, references=labels_ids)
 def train_network(training_args, model, train_data, val_data, model_path=None):
-    if model_path is not None:
+    if model_path is None:
+        data_collator = DataCollatorForSeq2Seq(tokenizer=model.enc_tokenizer,model=model)
         trainer = Seq2SeqTrainer(
             model=model,
             args=training_args,
             compute_metrics=compute_metrics,
             train_dataset=train_data,
             eval_dataset=val_data,
+            data_collator=data_collator,
         )
-        #trainer.train()
-    if model_path is None:
+        #training
         bleu_acc = trainer.train()
         trainer.plot_results(header='trial_num{}'.format(0))
     val_tag = CustomDataset('./data/val.unlabeled')
@@ -155,7 +157,6 @@ def main():
         evaluation_strategy="epoch",
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
-        fp16=True,
         output_dir="./",
         logging_steps=(batch_size*10),
         save_steps=10,
@@ -165,9 +166,10 @@ def main():
         lr_scheduler_type=lr_scheduler_type,
         save_strategy='epoch',
         save_total_limit=4,
-        group_by_length=True,
+        #group_by_length=True,
         predict_with_generate=True,
         generation_num_beams=beam,
+        use_mps_device=True,
         # logging_steps=1000,
         # save_steps=500,
         # eval_steps=7500,
@@ -176,9 +178,18 @@ def main():
     )
 
     model = EncDec()
-
-    train_data = CustomDataset(path='./data/train.labeled')
-    val_data = CustomDataset(path='./data/val.labeled')
+    if os.path.exists(train_path):
+        with open(train_path, 'rb') as f:
+            train_data = pickle.load(f)
+        with open(val_path, 'rb') as f:
+            val_data = pickle.load(f)
+    else:
+        train_data = CustomDataset(path='./data/train.labeled')
+        val_data = CustomDataset(path='./data/val.labeled')
+        with open(train_path, 'wb') as f:
+            pickle.dump(train_data, f)
+        with open(val_path, 'wb') as f:
+            pickle.dump(val_data, f)
     train_network(training_args, model, train_data, val_data, args.model_path)
 
 
@@ -187,4 +198,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main2()
+    main()
