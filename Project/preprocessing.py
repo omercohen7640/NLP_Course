@@ -16,25 +16,25 @@ ENG_INIT = "English:"
 
 CLS_IDX, MASK_IDX, PAD_IDX, SEP_IDX, UNK_IDX = (102, 104, 0, 103, 101)
 
-def mapping_func(examples):
-    inputs = [prefix + ex[source_lang] for ex in examples["translation"]]
-    targets = [ex[target_lang] for ex in examples["translation"]]
-    model_inputs = tokenizer(inputs, max_length=max_input_length, truncation=True)
+def mapping_func(data,src_tokenizer,tgt_tokenizer):
+    inputs = [ex[SRC_LANG] for ex in data["translation"]]
+    targets = [ex[TGT_LANG] for ex in data["translation"]]
 
-    # Setup the tokenizer for targets
-    with tokenizer.as_target_tokenizer():
-        labels = tokenizer(targets, max_length=max_target_length, truncation=True)
+    model_inputs = src_tokenizer(inputs, truncation=True)
+    labels = tgt_tokenizer(targets, truncation=True)
 
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
-def get_dataset_dict():
-    with open('./Project/data/train') as f:
+def get_dataset_dict(src_tokenizer, tgt_tokenizer):
+    with open('./data/train') as f:
         train_list_of_dict = json.load(f)
-    with open('./Project/data/val') as f:
+    with open('./data/val') as f:
         val_list_of_dict = json.load(f)
     train_dataset = datasets.Dataset.from_dict({"translation":train_list_of_dict})
     val_dataset = datasets.Dataset.from_dict({"translation": val_list_of_dict})
     train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset})
+    mapping = lambda x:mapping_func(x, src_tokenizer, tgt_tokenizer)
+    train_val_dataset_dict.map(mapping, batched=True)
     return train_val_dataset_dict
 
 class CustomDataset(Dataset):
