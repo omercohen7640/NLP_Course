@@ -7,7 +7,7 @@ import os
 from Trainer import NNTrainer
 from models import *
 import evaluate
-from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
+from transformers import *
 from preprocessing import CustomDataset
 def main2():
     model = EncDec()
@@ -133,7 +133,7 @@ def train_network(training_args, model, train_data, val_data, model_path=None):
             train_dataset=train_data,
             eval_dataset=val_data,
         )
-        trainer.train()
+        #trainer.train()
     if model_path is None:
         bleu_acc = trainer.train()
         trainer.plot_results(header='trial_num{}'.format(0))
@@ -147,16 +147,27 @@ def train_network(training_args, model, train_data, val_data, model_path=None):
 def main():
     args = parser.parse_args()
     batch_size = args.batch_size
+    wd = 1e-4
+    epochs = 10
+    beam = 3
+    lr_scheduler_type = 'constant_with_warmup'
     training_args = Seq2SeqTrainingArguments(
-        predict_with_generate=True,
-        evaluation_strategy="steps",
+        evaluation_strategy="epoch",
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         fp16=True,
         output_dir="./",
-        logging_steps=2,
+        logging_steps=(batch_size*10),
         save_steps=10,
         eval_steps=4,
+        weight_decay=wd,
+        num_train_epochs=epochs,
+        lr_scheduler_type=lr_scheduler_type,
+        save_strategy='epoch',
+        save_total_limit=4,
+        group_by_length=True,
+        predict_with_generate=True,
+        generation_num_beams=beam,
         # logging_steps=1000,
         # save_steps=500,
         # eval_steps=7500,
