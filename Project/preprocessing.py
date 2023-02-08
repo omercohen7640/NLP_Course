@@ -1,3 +1,4 @@
+import datasets
 from transformers import AutoTokenizer
 import torch
 from torchtext.data.utils import get_tokenizer
@@ -6,13 +7,35 @@ from torch.utils.data import Dataset
 from typing import Iterable, List
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
-
+from datasets import Dataset, DatasetDict
+import json
 SRC_LANG = 'de'
 TGT_LANG = 'en'
 GER_INIT = "German:"
 ENG_INIT = "English:"
 
 CLS_IDX, MASK_IDX, PAD_IDX, SEP_IDX, UNK_IDX = (102, 104, 0, 103, 101)
+
+def mapping_func(examples):
+    inputs = [prefix + ex[source_lang] for ex in examples["translation"]]
+    targets = [ex[target_lang] for ex in examples["translation"]]
+    model_inputs = tokenizer(inputs, max_length=max_input_length, truncation=True)
+
+    # Setup the tokenizer for targets
+    with tokenizer.as_target_tokenizer():
+        labels = tokenizer(targets, max_length=max_target_length, truncation=True)
+
+    model_inputs["labels"] = labels["input_ids"]
+    return model_inputs
+def get_dataset_dict():
+    with open('./Project/data/train') as f:
+        train_list_of_dict = json.load(f)
+    with open('./Project/data/val') as f:
+        val_list_of_dict = json.load(f)
+    train_dataset = datasets.Dataset.from_dict({"translation":train_list_of_dict})
+    val_dataset = datasets.Dataset.from_dict({"translation": val_list_of_dict})
+    train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset})
+    return train_val_dataset_dict
 
 class CustomDataset(Dataset):
     def __init__(self,path):
@@ -50,10 +73,10 @@ def get_text_from_file(path):
             elif line == "":
                 if is_labeled:
                     for eng_sen, ger_sen in zip(english_sentences,german_sentences):
-                        texts.append((ger_sen,eng_sen))
+                        texts.append({'text': ger_sen,'labels': eng_sen})
                 else:
                     for ger_sen in german_sentences:
-                        texts.append(ger_sen)
+                        texts.append({ger_sen})
             else:
                 if curr_lang == SRC_LANG:
                     if not is_labeled and line.startswith('Roots in English'):
