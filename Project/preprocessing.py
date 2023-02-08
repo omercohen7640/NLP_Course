@@ -73,7 +73,7 @@ def get_text_from_file(path):
             elif line == "":
                 if is_labeled:
                     for eng_sen, ger_sen in zip(english_sentences,german_sentences):
-                        texts.append({'text': ger_sen, 'labels': eng_sen})
+                        texts.append({'text': ger_sen,'labels': eng_sen})
                 else:
                     for ger_sen in german_sentences:
                         texts.append({ger_sen})
