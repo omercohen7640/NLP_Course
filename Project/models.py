@@ -65,7 +65,7 @@ class EncDec(nn.Module):
                                                                                  decoder_pretrained_model_name_or_path=dec)
         # self.enc_dec_model = EncoderDecoderModel.from_encoder_decoder_pretrained(encoder=enc, decoder=dec)
 
-    def forward(self, inc_inputs: torch.Tensor, dec_inputs: torch.Tensor):
+    def forward(self, enc_inputs: torch.Tensor, dec_inputs: torch.Tensor):
         print('Forward Function is not implemented for CustomEncoderDecoder')
         raise NotImplementedError
 

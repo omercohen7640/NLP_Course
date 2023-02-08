@@ -8,9 +8,9 @@ from Trainer import NNTrainer
 from models import *
 import evaluate
 from transformers import *
-from preprocessing import CustomDataset
+from preprocessing import get_dataset_dict
 def main2():
-    model = EncDec()
+    ds = CustomDataset(path='./data/train.labeled')
     print('hi')
 
 train_path = './data/train.pkl'
@@ -178,19 +178,21 @@ def main():
     )
 
     model = EncDec()
-    if os.path.exists(train_path):
-        with open(train_path, 'rb') as f:
-            train_data = pickle.load(f)
-        with open(val_path, 'rb') as f:
-            val_data = pickle.load(f)
-    else:
-        train_data = CustomDataset(path='./data/train.labeled')
-        val_data = CustomDataset(path='./data/val.labeled')
-        with open(train_path, 'wb') as f:
-            pickle.dump(train_data, f)
-        with open(val_path, 'wb') as f:
-            pickle.dump(val_data, f)
-    train_network(training_args, model, train_data, val_data, args.model_path)
+    # if os.path.exists(train_path):
+    #    with open(train_path, 'rb') as f:
+    #        train_data = pickle.load(f)
+    #    with open(val_path, 'rb') as f:
+    #        val_data = pickle.load(f)
+    # else:
+        # train_data = CustomDataset(path='./data/train.labeled')
+        # val_data = CustomDataset(path='./data/val.labeled')
+
+        #with open(train_path, 'wb') as f:
+        #    pickle.dump(train_data, f)
+        #with open(val_path, 'wb') as f:
+        #    pickle.dump(val_data, f)
+    data = get_dataset_dict(model.enc_tokenizer, model.dec_tokenizer)
+    train_network(training_args, model, data['train'], data['val'], args.model_path)
 
 
 
