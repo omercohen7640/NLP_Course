@@ -35,7 +35,6 @@ class CustomEncoderDecoder(nn.Module):
         self.decoder = torch.nn.LSTM(input_size=self.embedding_dim, hidden_size=self.hidden_dim, num_layers=num_layers,
                                      batch_first=True, bidirectional=True)
 
-
     def forward(self, inputs: torch.Tensor):
         print('Forward Function is not implemented for CustomEncoderDecoder')
         raise NotImplementedError
@@ -51,7 +50,6 @@ class GraphLoss(nn.NLLLoss):
         return loss
 
 
-
 class EncDec(nn.Module):
     def __init__(self, enc="deepset/gbert-large", dec="bert-large-cased"):
         super(EncDec, self).__init__()
@@ -65,9 +63,12 @@ class EncDec(nn.Module):
                                                                                  decoder_pretrained_model_name_or_path=dec)
         # self.enc_dec_model = EncoderDecoderModel.from_encoder_decoder_pretrained(encoder=enc, decoder=dec)
 
-    def forward(self, enc_inputs: torch.Tensor, dec_inputs: torch.Tensor):
-        print('Forward Function is not implemented for CustomEncoderDecoder')
-        raise NotImplementedError
+    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, dec_input_ids: torch.Tensor,
+                dec_attention_mask: torch.Tensor):
+        return self.enc_dec_model(input_ids=input_ids,
+                                  attention_mask=attention_mask,
+                                  decoder_input_ids=dec_input_ids,
+                                  decoder_attention_mask=dec_attention_mask)
 
     def create_encoder_config(self, name):
         enc_config = BertConfig()

@@ -33,8 +33,8 @@ def get_dataset_dict(src_tokenizer, tgt_tokenizer):
     train_dataset = datasets.Dataset.from_dict({"translation":train_list_of_dict})
     val_dataset = datasets.Dataset.from_dict({"translation": val_list_of_dict})
     train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset})
-    mapping = lambda x:mapping_func(x, src_tokenizer, tgt_tokenizer)
-    train_val_dataset_dict.map(mapping, batched=True)
+    #mapping = lambda x:mapping_func(x, src_tokenizer, tgt_tokenizer)
+    #train_val_dataset_dict.map(mapping, batched=True)
     return train_val_dataset_dict
 
 class CustomDataset(Dataset):
@@ -73,7 +73,7 @@ def get_text_from_file(path):
             elif line == "":
                 if is_labeled:
                     for eng_sen, ger_sen in zip(english_sentences,german_sentences):
-                        texts.append({'text': ger_sen,'labels': eng_sen})
+                        texts.append({'text': ger_sen, 'labels': eng_sen})
                 else:
                     for ger_sen in german_sentences:
                         texts.append({ger_sen})

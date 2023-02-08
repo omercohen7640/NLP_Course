@@ -8,7 +8,7 @@ from Trainer import NNTrainer
 from models import *
 import evaluate
 from transformers import *
-from preprocessing import get_dataset_dict
+from preprocessing import get_dataset_dict, CustomDataset
 def main2():
     ds = CustomDataset(path='./data/train.labeled')
     print('hi')
@@ -191,20 +191,19 @@ def main():
         #    pickle.dump(train_data, f)
         #with open(val_path, 'wb') as f:
         #    pickle.dump(val_data, f)
-    data = get_dataset_dict(model.enc_tokenizer, model.dec_tokenizer)
-    train_network(training_args, model, data['train'], data['val'], args.model_path)
-    if os.path.exists(train_path):
-        with open(train_path, 'rb') as f:
-            train_data = pickle.load(f)
-        with open(val_path, 'rb') as f:
-            val_data = pickle.load(f)
-    else:
-        train_data = CustomDataset(path='./data/train.labeled')
-        val_data = CustomDataset(path='./data/val.labeled')
-        with open(train_path, 'wb') as f:
-            pickle.dump(train_data, f)
-        with open(val_path, 'wb') as f:
-            pickle.dump(val_data, f)
+    #train_network(training_args, model, data['train'], data['val'], args.model_path)
+    # if os.path.exists(train_path):
+    #     with open(train_path, 'rb') as f:
+    #         train_data = pickle.load(f)
+    #     with open(val_path, 'rb') as f:
+    #         val_data = pickle.load(f)
+    # else:
+    #     train_data = CustomDataset(path='./data/train.labeled')
+    #     val_data = CustomDataset(path='./data/val.labeled')
+    #     with open(train_path, 'wb') as f:
+    #         pickle.dump(train_data, f)
+    #     with open(val_path, 'wb') as f:
+    #         pickle.dump(val_data, f)
     enc_tokenizer = model.enc_tokenizer
     dec_tokenizer = model.dec_tokenizer
     encoder_max_length = 512
@@ -212,13 +211,13 @@ def main():
 
     def process_data_to_model_inputs(batch):
         # tokenize the inputs and labels
-        inputs = enc_tokenizer(batch["german"], padding="max_length", truncation=True, max_length=encoder_max_length)
-        outputs = dec_tokenizer(batch["english"], padding="max_length", truncation=True, max_length=decoder_max_length)
+        inputs = enc_tokenizer([e['de'] for e in batch['translation']], padding="max_length", truncation=True, max_length=encoder_max_length)
+        outputs = dec_tokenizer([e['en'] for e in batch['translation']], padding="max_length", truncation=True, max_length=decoder_max_length)
 
         batch["input_ids"] = inputs.input_ids
         batch["attention_mask"] = inputs.attention_mask
-        batch["decoder_input_ids"] = outputs.input_ids
-        batch["decoder_attention_mask"] = outputs.attention_mask
+        batch["dec_input_ids"] = outputs.input_ids
+        batch["dec_attention_mask"] = outputs.attention_mask
         batch["labels"] = outputs.input_ids.copy()
 
         # because BERT automatically shifts the labels, the labels correspond exactly to `decoder_input_ids`.
@@ -228,15 +227,17 @@ def main():
 
         return batch
 
-    train_data = train_data.map(process_data_to_model_inputs,
-                                batched=True,
-                                batch_size=batch_size,
-                                remove_columns=["german", "english"])
+    data = get_dataset_dict(model.enc_tokenizer, model.dec_tokenizer)
 
-    val_data = val_data.map(process_data_to_model_inputs,
+    train_data = data['train'].map(process_data_to_model_inputs,
+                                    batched=True,
+                                    batch_size=batch_size*100,
+                                   )
+
+    val_data = data['val'].map(process_data_to_model_inputs,
                             batched=True,
-                            batch_size=batch_size,
-                            remove_columns=["german", "english"])
+                            batch_size=batch_size*100,
+                            )
 
     train_network(training_args, model, train_data, val_data, args.model_path)
 
