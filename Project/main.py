@@ -144,11 +144,16 @@ def compute_metrics2(eval_preds):
     preds, labels = eval_preds
     if isinstance(preds, tuple):
         preds = preds[0]
-    decoded_preds = t5_tokenizer.batch_decode(preds, skip_special_tokens=True)
 
     # Replace -100 in the labels as we can't decode them.
     labels = np.where(labels != -100, labels, t5_tokenizer.pad_token_id)
-    decoded_labels = t5_tokenizer.as_target_tokenizer().batch_decode(labels, skip_special_tokens=True)
+    with t5_tokenizer.as_target_tokenizer():
+        decoded_preds = t5_tokenizer.batch_decode(preds, skip_special_tokens=True)
+        decoded_labels = t5_tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+    # Some simple post-processing
+    decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
+
     result =  project_evaluate.compute_metrics(decoded_preds,decoded_labels)
     return result
 

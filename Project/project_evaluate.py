@@ -12,7 +12,7 @@ def compute_metrics(tagged_en, true_en):
     metric = evaluate.load("sacrebleu")
     # metric = evaluate.load("accuracy")
     tagged_en = [x.strip().lower() for x in tagged_en]
-    true_en = [x.strip().lower() for x in true_en]
+    true_en = [[x[0].strip().lower()] for x in true_en]
 
     result = metric.compute(predictions=tagged_en, references=true_en)
     result = result['score']
