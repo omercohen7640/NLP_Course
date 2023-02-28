@@ -1,3 +1,5 @@
+import datasets
+
 from preprocessing import get_dataloader
 import Config as cfg
 import pickle
@@ -130,7 +132,33 @@ def write_comp_file(tagging, dataset):
 #     study.optimize(objective, n_trials=50)
 
 
+def postprocess_text(preds, labels):
+    preds = [pred.strip() for pred in preds]
+    labels = [[label.strip()] for label in labels]
 
+    return preds, labels
+
+metric = datasets.load_metric("bleu")
+def compute_metrics2(eval_preds):
+    preds, labels = eval_preds
+    if isinstance(preds, tuple):
+        preds = preds[0]
+    decoded_preds = t5_tokenizer.batch_decode(preds, skip_special_tokens=True)
+
+    # Replace -100 in the labels as we can't decode them.
+    labels = np.where(labels != -100, labels, t5_tokenizer.pad_token_id)
+    decoded_labels = t5_tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+    # Some simple post-processing
+    decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
+
+    result = metric.compute(predictions=decoded_preds, references=decoded_labels)
+    result = {"bleu": result["score"]}
+
+    prediction_lens = [np.count_nonzero(pred != t5_tokenizer.pad_token_id) for pred in preds]
+    result["gen_len"] = np.mean(prediction_lens)
+    result = {k: round(v, 4) for k, v in result.items()}
+    return result
 
 bleu = evaluate.load("bleu")
 
@@ -149,6 +177,7 @@ def train_network(training_args, model, train_data, val_data, model_path=None):
             train_dataset=train_data,
             eval_dataset=val_data,
             data_collator=data_collator,
+            predict_with_generate=True,
         )
         #training
         bleu_acc = trainer.train()
@@ -165,7 +194,8 @@ def train_network2(training_args, model, train_data, val_data, model_path=None):
         trainer = Seq2SeqTrainer(
             model=model,
             args=training_args,
-            compute_metrics=compute_metrics,
+            tokenizer=t5_tokenizer,
+            compute_metrics=compute_metrics2,
             train_dataset=train_data,
             eval_dataset=val_data,
             data_collator=data_collator,
