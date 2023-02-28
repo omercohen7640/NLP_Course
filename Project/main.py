@@ -147,7 +147,7 @@ def compute_metrics2(eval_preds):
 
     # Replace -100 in the labels as we can't decode them.
     labels = np.where(labels != -100, labels, t5_tokenizer.pad_token_id)
-    decoded_labels = t5_tokenizer.batch_decode(labels, skip_special_tokens=True)
+    decoded_labels = t5_tokenizer.as_target_tokenizer().batch_decode(labels, skip_special_tokens=True)
 
     # Some simple post-processing
     decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
