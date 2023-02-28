@@ -37,6 +37,18 @@ def get_dataset_dict(src_tokenizer, tgt_tokenizer):
     #train_val_dataset_dict.map(mapping, batched=True)
     return train_val_dataset_dict
 
+def get_dataset_dict2():
+    with open('./data/train') as f:
+        train_list_of_dict = json.load(f)
+    with open('./data/val') as f:
+        val_list_of_dict = json.load(f)
+    train_dataset = datasets.Dataset.from_dict({"translation":train_list_of_dict})
+    val_dataset = datasets.Dataset.from_dict({"translation": val_list_of_dict})
+    train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset})
+    #mapping = lambda x:mapping_func(x, src_tokenizer, tgt_tokenizer)
+    #train_val_dataset_dict.map(mapping, batched=True)
+    return train_val_dataset_dict
+
 class CustomDataset(Dataset):
     def __init__(self,path, other_model=False):
         self.path = path
