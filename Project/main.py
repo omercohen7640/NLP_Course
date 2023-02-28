@@ -7,11 +7,11 @@ import os
 from Trainer import NNTrainer
 from models import *
 import evaluate
-from transformers import Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, Seq2SeqTrainer
+from transformers import Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, Seq2SeqTrainer, AutoModelForSeq2SeqLM
 from preprocessing import get_dataset_dict, CustomDataset
-def main2():
-    ds = CustomDataset(path='./data/train.labeled')
-    print('hi')
+
+SRC_LANG = 'de'
+TGT_LANG = 'en'
 
 train_path = './data/train.pkl'
 val_path = './data/val.pkl'
@@ -21,6 +21,7 @@ dataset_dict = ['test',
 encoder_types = ['glove',
                  'word2vec',
                  'fastext']
+t5_tokenizer = AutoTokenizer.from_pretrained("t5-small")
 
 parser = argparse.ArgumentParser(description='Nimrod Admoni, nimrod216@gmail.com',
                                  formatter_class=argparse.RawTextHelpFormatter)
@@ -51,6 +52,19 @@ parser.add_argument('--model_path', default=None, help='model path to load')
 parser.add_argument('--tag_only', default=0, type=int, help='do not run train, only tagging')
 parser.add_argument('--v', default=0, type=int, help='verbosity level (0,1,2) (default:0)')
 parser.add_argument('--port', default='12355', help='choose port for distributed run')
+
+
+def preprocess_function(examples):
+
+    inputs = [example[SRC_LANG] for example in examples["translation"]]
+    targets = [example[TGT_LANG] for example in examples["translation"]]
+    model_inputs = t5_tokenizer(inputs, max_length=128, truncation=True)
+
+    with t5_tokenizer.as_target_tokenizer():
+        labels = t5_tokenizer(targets, max_length=128, truncation=True)
+
+    model_inputs["labels"] = labels["input_ids"]
+    return model_inputs
 
 def get_word(dataset, index):
     return dataset.datasets_dict['test'].original_words[index]
@@ -145,6 +159,25 @@ def train_network(training_args, model, train_data, val_data, model_path=None):
         tagging = model.generate(data)
         write_comp_file(tagging, data)
 
+def train_network2(training_args, model, train_data, val_data, model_path=None):
+    if model_path is None:
+        data_collator = DataCollatorForSeq2Seq(tokenizer=t5_tokenizer,model=model)
+        trainer = Seq2SeqTrainer(
+            model=model,
+            args=training_args,
+            compute_metrics=compute_metrics,
+            train_dataset=train_data,
+            eval_dataset=val_data,
+            data_collator=data_collator,
+        )
+        #training
+        bleu_acc = trainer.train()
+        trainer.plot_results(header='trial_num{}'.format(0))
+    val_tag = CustomDataset('./data/val.unlabeled')
+    comp = CustomDataset('./data/comp.unlabeled')
+    for data in [comp, val_tag]:
+        tagging = model.generate(data)
+        write_comp_file(tagging, data)
 
 def main():
     args = parser.parse_args()
@@ -208,7 +241,6 @@ def main():
     dec_tokenizer = model.dec_tokenizer
     encoder_max_length = 512
     decoder_max_length = 512
-
     def process_data_to_model_inputs(batch):
         # tokenize the inputs and labels
         inputs = enc_tokenizer([e['de'] for e in batch['translation']], padding="max_length", truncation=True, max_length=encoder_max_length)
@@ -228,7 +260,6 @@ def main():
         return batch
 
     data = get_dataset_dict(model.enc_tokenizer, model.dec_tokenizer)
-
     train_data = data['train'].map(process_data_to_model_inputs,
                                     batched=True,
                                     batch_size=batch_size*100,
@@ -239,12 +270,55 @@ def main():
                             batch_size=batch_size*100,
                             )
 
+
     train_network(training_args, model, train_data, val_data, args.model_path)
 
+
+
+def main2():
+    args = parser.parse_args()
+    batch_size = args.batch_size
+    wd = 1e-4
+    epochs = 10
+    beam = 3
+    lr_scheduler_type = 'constant_with_warmup'
+    training_args = Seq2SeqTrainingArguments(
+        evaluation_strategy="epoch",
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=batch_size,
+        output_dir="./",
+        logging_steps=(batch_size*10),
+        save_steps=10,
+        eval_steps=4,
+        weight_decay=wd,
+        num_train_epochs=epochs,
+        lr_scheduler_type=lr_scheduler_type,
+        save_strategy='epoch',
+        save_total_limit=4,
+        #group_by_length=True,
+        predict_with_generate=True,
+        generation_num_beams=beam,
+        # use_mps_device=True,
+        # logging_steps=1000,
+        # save_steps=500,
+        # eval_steps=7500,
+        # warmup_steps=2000,
+        # save_total_limit=3,
+    )
+
+    model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
+
+    data = get_dataset_dict(model.enc_tokenizer, model.dec_tokenizer)
+
+
+    train_data = data['train'].map(preprocess_function, batched=True)
+    val_data = data['val'].map(preprocess_function, batched=True)
+
+    train_network2(training_args, model, train_data, val_data, args.model_path)
 
 
 
 
 
 if __name__ == '__main__':
-    main()
+    main2()

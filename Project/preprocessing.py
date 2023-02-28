@@ -38,9 +38,9 @@ def get_dataset_dict(src_tokenizer, tgt_tokenizer):
     return train_val_dataset_dict
 
 class CustomDataset(Dataset):
-    def __init__(self,path):
+    def __init__(self,path, other_model=False):
         self.path = path
-        self.texts = get_text_from_file(path)
+        self.texts = get_text_from_file(path, other_model)
         self.name = path.split('.')[0]
     def __len__(self):
         return len(self.texts)
@@ -49,7 +49,7 @@ class CustomDataset(Dataset):
         return src_sen, tgt_sen
 
 
-def get_dataloader(path,batch_size):
+def get_dataloader(path, batch_size):
     texts = get_text_from_file(path)
     is_labeled = 'unlabeled' not in path
     if is_labeled:
@@ -58,11 +58,11 @@ def get_dataloader(path,batch_size):
         fn = collate_fn_comp
     return DataLoader(texts,batch_size=batch_size, collate_fn=fn, shuffle=True)
 
-def get_text_from_file(path):
+def get_text_from_file(path,other_model):
     is_labeled = 'unlabeled' not in path
     texts = []
     with open(path) as f:
-        for line in f.readlines():
+        for i,line in enumerate(f.readlines()):
             line = line[:-1] if line[-1] == '\n' else line
             if line == GER_INIT:
                 german_sentences = []
@@ -73,10 +73,13 @@ def get_text_from_file(path):
             elif line == "":
                 if is_labeled:
                     for eng_sen, ger_sen in zip(english_sentences,german_sentences):
-                        texts.append({'text': ger_sen,'labels': eng_sen})
+                        if other_model:
+                            texts.append({'id':str(i),'translation':{'de': ger_sen, 'en': eng_sen}})
+                        else:
+                            texts.append({'text': ger_sen,'labels': eng_sen})
                 else:
                     for ger_sen in german_sentences:
-                        texts.append({ger_sen})
+                        texts.append({'id':str(i),'translation':{'de':ger_sen}})
             else:
                 if curr_lang == SRC_LANG:
                     if not is_labeled and line.startswith('Roots in English'):
