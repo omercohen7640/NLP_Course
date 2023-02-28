@@ -8,7 +8,7 @@ from Trainer import NNTrainer
 from models import *
 import evaluate
 from transformers import Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, Seq2SeqTrainer, AutoModelForSeq2SeqLM
-from preprocessing import get_dataset_dict, CustomDataset
+from preprocessing import get_dataset_dict, CustomDataset, get_dataset_dict2
 
 SRC_LANG = 'de'
 TGT_LANG = 'en'
@@ -308,7 +308,7 @@ def main2():
 
     model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
 
-    data = get_dataset_dict(model.enc_tokenizer, model.dec_tokenizer)
+    data = get_dataset_dict2()
 
 
     train_data = data['train'].map(preprocess_function, batched=True)
