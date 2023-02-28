@@ -9,8 +9,9 @@ import os
 from Trainer import NNTrainer
 from models import *
 import evaluate
-from transformers import Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, Seq2SeqTrainer, AutoModelForSeq2SeqLM
+from transformers import Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, Seq2SeqTrainer, AutoModelForSeq2SeqLM, AutoTokenizer
 from preprocessing import get_dataset_dict, CustomDataset, get_dataset_dict2
+import project_evaluate
 
 SRC_LANG = 'de'
 TGT_LANG = 'en'
@@ -148,16 +149,7 @@ def compute_metrics2(eval_preds):
     # Replace -100 in the labels as we can't decode them.
     labels = np.where(labels != -100, labels, t5_tokenizer.pad_token_id)
     decoded_labels = t5_tokenizer.as_target_tokenizer().batch_decode(labels, skip_special_tokens=True)
-
-    # Some simple post-processing
-    decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
-
-    result = metric.compute(predictions=decoded_preds, references=decoded_labels)
-    result = {"bleu": result["score"]}
-
-    prediction_lens = [np.count_nonzero(pred != t5_tokenizer.pad_token_id) for pred in preds]
-    result["gen_len"] = np.mean(prediction_lens)
-    result = {k: round(v, 4) for k, v in result.items()}
+    result =  project_evaluate.compute_metrics(decoded_preds,decoded_labels)
     return result
 
 bleu = evaluate.load("bleu")
