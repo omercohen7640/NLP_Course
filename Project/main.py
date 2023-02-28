@@ -127,7 +127,7 @@ def compute_metrics(pred):
 
 def train_network(training_args, model, train_data, val_data, model_path=None):
     if model_path is None:
-        data_collator = DataCollatorForSeq2Seq(tokenizer=model.enc_tokenizer,model=model)
+        data_collator = DataCollatorForSeq2Seq(tokenizer=model.enc_tokenizer,model=model.enc_dec_model)
         trainer = Seq2SeqTrainer(
             model=model.enc_dec_model,
             args=training_args,
@@ -216,8 +216,8 @@ def main():
 
         batch["input_ids"] = inputs.input_ids
         batch["attention_mask"] = inputs.attention_mask
-        batch["dec_input_ids"] = outputs.input_ids
-        batch["dec_attention_mask"] = outputs.attention_mask
+        batch["decoder_input_ids"] = outputs.input_ids
+        batch["decoder_attention_mask"] = outputs.attention_mask
         batch["labels"] = outputs.input_ids.copy()
 
         # because BERT automatically shifts the labels, the labels correspond exactly to `decoder_input_ids`.
