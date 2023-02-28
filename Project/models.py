@@ -94,3 +94,4 @@ class EncDec(nn.Module):
         dec_config.add_cross_attention = True
         dec_config.decoder_start_token_id = self.dec_tokenizer.bos_token
         self.dec_config = dec_config
+
