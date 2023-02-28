@@ -6,8 +6,9 @@ from torch.nn import functional as F
 from transformers import EncoderDecoderModel, EncoderDecoderConfig, PretrainedConfig, BertConfig, GPT2Config, \
     AutoTokenizer, GPT2Tokenizer, DataCollatorForSeq2Seq, PreTrainedTokenizerBase
 from collections import OrderedDict
+import evaluate
 
-from transformers.utils import PaddingStrategy
+#from transformers.utils import PaddingStrategy
 
 
 # def eval_model(model, sentence):
@@ -49,9 +50,11 @@ class GraphLoss(nn.NLLLoss):
         loss = - (torch.sum(masked) / torch.sum(target))
         return loss
 
+bleu = evaluate.load("bleu")
+
 
 class EncDec(nn.Module):
-    def __init__(self, enc="deepset/gbert-large", dec="bert-large-cased"):
+    def __init__(self, enc="deepset/gbert-base", dec="bert-base-cased"):
         super(EncDec, self).__init__()
         self.enc_tokenizer = AutoTokenizer.from_pretrained(enc)
         self.dec_tokenizer = AutoTokenizer.from_pretrained(dec)
@@ -62,6 +65,11 @@ class EncDec(nn.Module):
                                                                                  encoder_pretrained_model_name_or_path=enc,
                                                                                  decoder_pretrained_model_name_or_path=dec)
         # self.enc_dec_model = EncoderDecoderModel.from_encoder_decoder_pretrained(encoder=enc, decoder=dec)
+
+    def compute_metrics(pred):
+        labels_ids = pred.label_ids
+        pred_ids = pred.predictions
+        return bleu.compute(predictions=pred_ids, references=labels_ids)
 
     def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, dec_input_ids: torch.Tensor,
                 dec_attention_mask: torch.Tensor):

@@ -7,7 +7,7 @@ import os
 from Trainer import NNTrainer
 from models import *
 import evaluate
-from transformers import *
+from transformers import Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, Seq2SeqTrainer
 from preprocessing import get_dataset_dict, CustomDataset
 def main2():
     ds = CustomDataset(path='./data/train.labeled')
@@ -123,13 +123,13 @@ bleu = evaluate.load("bleu")
 def compute_metrics(pred):
     labels_ids = pred.label_ids
     pred_ids = pred.predictions
+    return torch.from_numpy(bleu.compute(predictions=pred_ids, references=labels_ids))
 
-    return bleu.compute(predictions=pred_ids, references=labels_ids)
 def train_network(training_args, model, train_data, val_data, model_path=None):
     if model_path is None:
         data_collator = DataCollatorForSeq2Seq(tokenizer=model.enc_tokenizer,model=model)
         trainer = Seq2SeqTrainer(
-            model=model,
+            model=model.enc_dec_model,
             args=training_args,
             compute_metrics=compute_metrics,
             train_dataset=train_data,
@@ -169,7 +169,7 @@ def main():
         #group_by_length=True,
         predict_with_generate=True,
         generation_num_beams=beam,
-        use_mps_device=True,
+        # use_mps_device=True,
         # logging_steps=1000,
         # save_steps=500,
         # eval_steps=7500,
