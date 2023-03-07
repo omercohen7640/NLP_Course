@@ -55,7 +55,9 @@ def get_dataset_dict2():
         val_list_of_dict = json.load(f)
     train_dataset = datasets.Dataset.from_dict({"translation":train_list_of_dict})
     val_dataset = datasets.Dataset.from_dict({"translation": val_list_of_dict})
-    train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset})
+    valunlabled = get_text_from_file('./data/val.unlabeled', other_model=True)
+    comp= get_text_from_file('./data/comp.unlabeled', other_model=True)
+    train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset,'valunlabled':valunlabled,'comp': comp})
     #mapping = lambda x:mapping_func(x, src_tokenizer, tgt_tokenizer)
     #train_val_dataset_dict.map(mapping, batched=True)
     return train_val_dataset_dict
