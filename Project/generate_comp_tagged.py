@@ -1,3 +1,6 @@
+import datasets
+
+from preprocessing import get_dataloader
 import Config as cfg
 import pickle
 import argparse
@@ -5,71 +8,97 @@ import sys
 import os
 from Trainer import NNTrainer
 from models import *
+import evaluate
+from transformers import Seq2SeqTrainingArguments, DataCollatorForSeq2Seq, Seq2SeqTrainer, AutoModelForSeq2SeqLM, AutoTokenizer
+from preprocessing import get_dataset_dict, CustomDataset, get_dataset_dict2
+import project_evaluate
 
-def load_dataset(encoder='custom', batch_size=1):
-    return
+SRC_LANG = 'de'
+TGT_LANG = 'en'
 
-def get_word(dataset, index, test_set):
-    return
 
-def write_comp_file(tagging, dataset, test_set):
-    name = './comp_203860721_308428127.tagged'
-    f = open(name, 'w+')
-    empty_lines = dataset.datasets_dict[test_set].empty_lines
-    assert (dataset.datasets_dict[test_set].num_of_words >= len(tagging))
+dataset_dict = ['test',
+                'comp']
+encoder_types = ['glove',
+                 'word2vec',
+                 'fastext']
+t5_tokenizer = AutoTokenizer.from_pretrained("t5-base")
 
+parser = argparse.ArgumentParser(description='Nimrod Admoni, nimrod216@gmail.com',
+                                 formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('--batch_size', default=16, type=int,
+                    help='number of samples in mini batch')
+parser.add_argument('--model_path', default=None, help='model path to load')
+parser.add_argument('--comp', default=0, type=int, help='do not run train, only tagging')
+parser.add_argument('--v', default=0, type=int, help='verbosity level (0,1,2) (default:0)')
+parser.add_argument('--port', default='12355', help='choose port for distributed run')
+
+
+def preprocess_function(examples):
+
+    inputs = [example[SRC_LANG] for example in examples["translation"]]
+    model_inputs = t5_tokenizer(inputs, max_length=128, truncation=True)
+
+    with t5_tokenizer.as_target_tokenizer():
+        labels = t5_tokenizer(targets, max_length=128, truncation=True)
+
+    model_inputs["labels"] = labels["input_ids"]
+    return model_inputs
+
+
+def write_comp_file(translated, lines_to_translate, file_name):
+    f = open(file_name, 'w+')
+    start_lines = raise NotImplementedError
     tagging_index = 0
-    for i in range(dataset.datasets_dict[test_set].num_of_words):
-        p, word, POS = get_word(dataset, i, test_set)
-        if word == '':
-            f.write(word + '\n')
-        else:
-            if i in empty_lines:
-                f.write('{}\n'.format(word))
-            else:
-                tag = tagging[tagging_index]
-                f.write('{}\t{}\t_\t{}\t_\t_\t{}\t_\t_\t_\n'.format(p, word, POS, int(tag)))
-                tagging_index += 1
+    orig_stack = 'German:\n'
+    translated_stack = 'English:\n'
+    for idx, line in enumerate(translated):
+        if idx in start_lines:
+            f.write(orig_stack + translated_stack + '\n')
+            orig_stack = 'German:\n'
+            translated_stack = 'English:\n'
+        orig_stack += (line + '\n')
+        translated_stack += (lines_to_translate[idx] + '\n')
     f.write('\n')
     f.close()
 
-def train_network(dataset, epochs, LRD, WD, MOMENTUM, GAMMA, embedding_dim=100, device=None, save_all_states=True,
-                  model_path=None, test_set='test', batch_size=16, seed=None, LR=0.1, lstm_layer_n=2):
-    if seed is None:
-        seed = torch.random.initial_seed() & ((1 << 63) - 1)
-    else:
-        seed = seed
-    vec_size = dataset.vec_size
-    model = CustomEncoderDecoder(embedding_dim=embedding_dim, vocab_size=vec_size,
-                                 num_layers=lstm_layer_n, embed=True)
-    trainer = NNTrainer(dataset=dataset, model=model, epochs=epochs, batch_size=batch_size,
-                        seed=seed, LR=LR, LRD=LRD, WD=WD, MOMENTUM=MOMENTUM, GAMMA=GAMMA, lmbda=None,
-                        device=device, save_all_states=save_all_states, model_path=model_path, test_set=test_set)
-    tagging = trainer.tag_test(test_set)
-    write_comp_file(tagging, dataset, test_set)
+
+def postprocess_text(preds, labels):
+    preds = [pred.strip() for pred in preds]
+    labels = [[label.strip()] for label in labels]
+
+    return preds, labels
+
+
+def inference(model, lines_to_translate, file_name):
+    translated = []
+    for line in lines_to_translate:
+        line_tokenized = t5_tokenizer(line, return_tensors="pt").input_ids
+        output = model.generate(line_tokenized)
+        out_line = t5_tokenizer.decode(output[0], skip_special_tokens=True)
+        translated.append([out_line])
+    write_comp_file(translated, lines_to_translate, file_name)
 
 
 def main():
-    cfg.USER_CMD = ' '.join(sys.argv)
-    cfg.LOG.start_new_log(name='parameter_search')
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    cfg.LOG.write("running on " + device)
-    ephocs = 50
-    batch_size = 3
-    lr = 0.001223556028065839
-    wd = 8.95059399613521e-05
-    lstm_layer_num = 3
-    ratio = 0.9088181054928288
-    embedding_dim = 86
-    pos_dim = 22
-    embedder = 'custom'
-    concat = True  # 1 = concat, 0 = no_concat
-    dataset = load_dataset(encoder=embedder)
-    model_path = './data/trained_model.pth'
-    train_network(dataset=dataset, epochs=ephocs, batch_size=2 ** batch_size,
-                  seed=None, LR=lr, LRD=0, WD=wd, MOMENTUM=0, GAMMA=0.1,
-                  device=device, save_all_states=True, model_path=model_path, test_set='comp',
-                  lstm_layer_n=lstm_layer_num, embedding_dim=embedding_dim)
+    args = parser.parse_args()
+    batch_size = args.batch_size
+    beam = 3
+    model = AutoModelForSeq2SeqLM.from_pretrained("args.model_path")
+    # increase max length to generate longer sentences
+    model.config.max_length = 512
+    data = get_dataset_dict2()
+    comp_data = data['comp']
+    val_data = data['val_untagged']
+    # data_collator = DataCollatorForSeq2Seq(tokenizer=t5_tokenizer, model=model)
+    if args.comp:
+        inference(model, comp_data, '')
+    else:
+        inference(model, val_data, '')
+
+
+
+
 
 if __name__ == '__main__':
     main()
