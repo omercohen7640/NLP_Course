@@ -16,6 +16,17 @@ ENG_INIT = "English:"
 
 CLS_IDX, MASK_IDX, PAD_IDX, SEP_IDX, UNK_IDX = (102, 104, 0, 103, 101)
 
+def get_start_lines(path):
+    start_lines = []
+    counter = 0
+    with open(path) as f:
+        lines = f.readlines()
+        for n, line in enumerate(lines):
+            if line == lines[0]:
+                start_lines.append(counter)
+            elif line != '\n' and not line.startswith('Roots in English') and not line.startswith('Modifiers in English'):
+                counter = counter + 1
+    return start_lines
 def mapping_func(data,src_tokenizer,tgt_tokenizer):
     inputs = [ex[SRC_LANG] for ex in data["translation"]]
     targets = [ex[TGT_LANG] for ex in data["translation"]]
