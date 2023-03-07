@@ -300,6 +300,15 @@ def main():
 
     train_network(training_args, model, train_data, val_data, args.model_path)
 
+def optuna_hp_space(trial):
+    hp_space = {
+        "learning rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+        "num_train_epochs": trial.suggest_int("num_train_epochs", 10, 20),
+        "lr_scheduler_type ": trial.suggest_categorical("lr_scheduler_type", ["linear", "cosine","constant_with_warmup"]),
+        'weight_decay': trial.suggest_float('weight_decay', 1e-5, 1e-3, log=True),
+        'beam': trial.suggest_int("beam", 2, 5),
+    }
+    return hp_space
 
 
 def main2():
@@ -347,6 +356,52 @@ def main2():
 
 
 
+def parameter_search():
+    args = parser.parse_args()
+    batch_size = args.batch_size
+    training_args = Seq2SeqTrainingArguments(
+        evaluation_strategy="epoch",
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=batch_size,
+        output_dir="./",
+        logging_steps=(batch_size*10),
+        save_steps=10,
+        eval_steps=4,
+        save_strategy='epoch',
+        save_total_limit=4,
+        predict_with_generate=True,
+    )
+
+    model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
+    # increase max length to generate longer sentences
+    model.config.max_length = 512
+    data = get_dataset_dict2()
+
+
+    train_data = data['train'].map(preprocess_function, batched=True)
+    val_data = data['val'].map(preprocess_function, batched=True)
+    data_collator = DataCollatorForSeq2Seq(tokenizer=t5_tokenizer, model=model)
+
+    trainer = Seq2SeqTrainer(
+        model=model,
+        args=training_args,
+        tokenizer=t5_tokenizer,
+        compute_metrics=compute_metrics2,
+        train_dataset=train_data,
+        eval_dataset=val_data,
+        data_collator=data_collator,
+    )
+    best_trial = trainer.hyperparameter_search(
+    direction="maximize",
+    backend="optuna",
+    hp_space=optuna_hp_space,
+    n_trials=20)
+    print(best_trial)
+
+
+
+
+
 
 if __name__ == '__main__':
-    main2()
+    parameter_search()
