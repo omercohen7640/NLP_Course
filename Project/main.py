@@ -302,7 +302,7 @@ def main():
 
 def optuna_hp_space(trial):
     hp_space = {
-        "learning rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
+        "learning_rate": trial.suggest_float("learning_rate", 1e-5, 1e-3, log=True),
         "num_train_epochs": trial.suggest_int("num_train_epochs", 10, 20),
         "lr_scheduler_type ": trial.suggest_categorical("lr_scheduler_type", ["linear", "cosine","constant_with_warmup"]),
         'weight_decay': trial.suggest_float('weight_decay', 1e-5, 1e-3, log=True),
