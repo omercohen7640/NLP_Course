@@ -155,7 +155,7 @@ def compute_metrics2(eval_preds):
     decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
     result =  project_evaluate.compute_metrics(decoded_preds,decoded_labels)
-    return result
+    return {'score': result}
 
 bleu = evaluate.load("bleu")
 
@@ -334,7 +334,8 @@ def main2():
     )
 
     model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
-
+    # increase max length to generate longer sentences
+    model.config.max_length = 512
     data = get_dataset_dict2()
 
 
