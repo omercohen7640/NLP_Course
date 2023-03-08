@@ -16,6 +16,17 @@ ENG_INIT = "English:"
 
 CLS_IDX, MASK_IDX, PAD_IDX, SEP_IDX, UNK_IDX = (102, 104, 0, 103, 101)
 
+def get_start_lines(path):
+    start_lines = []
+    counter = 0
+    with open(path) as f:
+        lines = f.readlines()
+        for n, line in enumerate(lines):
+            if line == lines[0]:
+                start_lines.append(counter)
+            elif line != '\n' and not line.startswith('Roots in English') and not line.startswith('Modifiers in English'):
+                counter = counter + 1
+    return start_lines
 def mapping_func(data,src_tokenizer,tgt_tokenizer):
     inputs = [ex[SRC_LANG] for ex in data["translation"]]
     targets = [ex[TGT_LANG] for ex in data["translation"]]
@@ -44,7 +55,9 @@ def get_dataset_dict2():
         val_list_of_dict = json.load(f)
     train_dataset = datasets.Dataset.from_dict({"translation":train_list_of_dict})
     val_dataset = datasets.Dataset.from_dict({"translation": val_list_of_dict})
-    train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset})
+    valunlabled = get_text_from_file('./data/val.unlabeled', other_model=True)
+    comp= get_text_from_file('./data/comp.unlabeled', other_model=True)
+    train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset,'valunlabled':valunlabled,'comp': comp})
     #mapping = lambda x:mapping_func(x, src_tokenizer, tgt_tokenizer)
     #train_val_dataset_dict.map(mapping, batched=True)
     return train_val_dataset_dict
