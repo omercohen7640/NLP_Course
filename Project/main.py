@@ -163,6 +163,7 @@ def optuna_hp_space(trial):
         # "lr_scheduler_type ": trial.suggest_categorical("lr_scheduler_type", ["linear", "cosine","constant_with_warmup"]),
         'weight_decay': trial.suggest_float('weight_decay', 1e-5, 1e-3, log=True),
         'generation_num_beams': trial.suggest_int("generation_num_beams", 2, 5),
+        'num_train_epochs': trial.suggest_int("generation_num_beams", 10, 20),
     }
     return hp_space
 
@@ -215,12 +216,11 @@ def parameter_search():
     batch_size = args.batch_size
     training_args = Seq2SeqTrainingArguments(
         lr_scheduler_type='constant_with_warmup',
-        num_train_epochs=20,
         evaluation_strategy="epoch",
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         output_dir="./",
-        logging_steps=(batch_size*10),
+        logging_strategy='epoch',
         save_steps=10,
         eval_steps=4,
         save_strategy='epoch',
@@ -252,6 +252,10 @@ def parameter_search():
     backend="optuna",
     hp_space=optuna_hp_space,
     n_trials=20)
+    
+    with open("my_checkpoint.pth",'+w') as f:
+        pickle.dump(f, best_trial)
+    
     print(best_trial)
 
 
