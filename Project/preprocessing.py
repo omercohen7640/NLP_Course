@@ -9,6 +9,11 @@ from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 from datasets import Dataset, DatasetDict
 import json
+import spacy
+
+
+dep_parse = spacy.load('en_core_web_sm')
+
 SRC_LANG = 'de'
 TGT_LANG = 'en'
 GER_INIT = "German:"
@@ -27,6 +32,7 @@ def get_start_lines(path):
             elif line != '\n' and not line.startswith('Roots in English') and not line.startswith('Modifiers in English'):
                 counter = counter + 1
     return start_lines
+
 def mapping_func(data,src_tokenizer,tgt_tokenizer):
     inputs = [ex[SRC_LANG] for ex in data["translation"]]
     targets = [ex[TGT_LANG] for ex in data["translation"]]
@@ -36,6 +42,7 @@ def mapping_func(data,src_tokenizer,tgt_tokenizer):
 
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
+
 def get_dataset_dict(src_tokenizer, tgt_tokenizer):
     with open('./data/train') as f:
         train_list_of_dict = json.load(f)
@@ -53,6 +60,19 @@ def get_dataset_dict2():
         train_list_of_dict = json.load(f)
     with open('./data/val') as f:
         val_list_of_dict = json.load(f)
+    if "dep" not in val_list_of_dict[0].keys(): 
+        x1 = [dep_parse(sen['en']) for sen in train_list_of_dict]
+        x2 = [dep_parse(sen['en']) for sen in val_list_of_dict]
+        train_roots_modifiers = [(list(x.sents)[0].root, list(list(x.sents)[0].root.children)[0:2]) for x in x1]
+        val_roots_modifiers = [(list(x.sents)[0].root, list(list(x.sents)[0].root.children)[0:2]) for x in x2]
+        for idx,i in enumerate(train_list_of_dict):
+            i["dep"] = str(train_roots_modifiers[idx])
+        for idx,i in enumerate(val_list_of_dict):
+            i["dep"] = str(val_roots_modifiers[idx])
+        with open('./data/train','w') as f:
+            json.dump(train_list_of_dict,f)
+        with open('./data/val','w') as f:
+            json.dump(val_list_of_dict,f)
     train_dataset = datasets.Dataset.from_dict({"translation":train_list_of_dict})
     val_dataset = datasets.Dataset.from_dict({"translation": val_list_of_dict})
     valunlabled = get_text_from_file('./data/val.unlabeled', other_model=True)

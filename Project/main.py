@@ -15,6 +15,7 @@ import project_evaluate
 
 SRC_LANG = 'de'
 TGT_LANG = 'en'
+DEP = 'dep'
 
 train_path = './data/train.pkl'
 val_path = './data/val.pkl'
@@ -56,13 +57,12 @@ parser.add_argument('--v', default=0, type=int, help='verbosity level (0,1,2) (d
 parser.add_argument('--port', default='12355', help='choose port for distributed run')
 
 args = parser.parse_args()
-
 t5_tokenizer = AutoTokenizer.from_pretrained("t5-"+args.model_size)
 
 
 def preprocess_function(examples):
 
-    inputs = [example[SRC_LANG] for example in examples["translation"]]
+    inputs = [example[SRC_LANG] + example[DEP] for example in examples["translation"]]
     targets = [example[TGT_LANG] for example in examples["translation"]]
     model_inputs = t5_tokenizer(inputs, max_length=128, truncation=True)
 
@@ -269,4 +269,4 @@ def parameter_search():
 
 if __name__ == '__main__':
     parameter_search()
-    # main2()
+    #main2()
