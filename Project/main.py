@@ -268,5 +268,5 @@ def parameter_search():
 
 
 if __name__ == '__main__':
-    parameter_search()
-    #main2()
+    #parameter_search()
+    main2()

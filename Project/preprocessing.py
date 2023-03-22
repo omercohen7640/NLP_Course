@@ -10,7 +10,7 @@ from torch.nn.utils.rnn import pad_sequence
 from datasets import Dataset, DatasetDict
 import json
 import spacy
-
+import os
 
 dep_parse = spacy.load('en_core_web_sm')
 
@@ -56,28 +56,38 @@ def get_dataset_dict(src_tokenizer, tgt_tokenizer):
     return train_val_dataset_dict
 
 def get_dataset_dict2():
-    with open('./data/train') as f:
-        train_list_of_dict = json.load(f)
-    with open('./data/val') as f:
-        val_list_of_dict = json.load(f)
-    if "dep" not in val_list_of_dict[0].keys(): 
-        x1 = [dep_parse(sen['en']) for sen in train_list_of_dict]
-        x2 = [dep_parse(sen['en']) for sen in val_list_of_dict]
-        train_roots_modifiers = [(list(x.sents)[0].root, list(list(x.sents)[0].root.children)[0:2]) for x in x1]
-        val_roots_modifiers = [(list(x.sents)[0].root, list(list(x.sents)[0].root.children)[0:2]) for x in x2]
-        for idx,i in enumerate(train_list_of_dict):
-            i["dep"] = str(train_roots_modifiers[idx])
-        for idx,i in enumerate(val_list_of_dict):
-            i["dep"] = str(val_roots_modifiers[idx])
-        with open('./data/train','w') as f:
-            json.dump(train_list_of_dict,f)
-        with open('./data/val','w') as f:
-            json.dump(val_list_of_dict,f)
-    train_dataset = datasets.Dataset.from_dict({"translation":train_list_of_dict})
-    val_dataset = datasets.Dataset.from_dict({"translation": val_list_of_dict})
-    valunlabled = get_text_from_file('./data/val.unlabeled', other_model=True)
-    comp= get_text_from_file('./data/comp.unlabeled', other_model=True)
-    train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset,'valunlabled':valunlabled,'comp': comp})
+    list_of_dict = []
+    for filename, s in zip(['val','val','train','comp'],['_unlabeled','_labeled','_labeled','_unlabeled']):
+        if os.path.exists("./data/"+filename+s):
+            with open('./data/'+filename+s) as f:
+                list_of_dict.append(json.load(f))
+        else:
+            text = get_text_from_file("./data/"+filename+s.replace('_','.'),True)
+            with open("./data/"+filename+s,'w') as f:
+                json.dump(text,f)
+            list_of_dict.append(text)
+    # text = get_text_from_file("./data/train.labeled",True)
+    # for filename in ['val','val_unlabeled','train','comp_unlabeled']:
+    #     with open('./data/'+filename) as f:
+    #         train_list_of_dict = json.load(f)
+    # if "dep" not in val_list_of_dict[0].keys(): 
+    #     x1 = [dep_parse(sen['en']) for sen in train_list_of_dict]
+    #     x2 = [dep_parse(sen['en']) for sen in val_list_of_dict]
+    #     train_roots_modifiers = [(list(x.sents)[0].root, list(list(x.sents)[0].root.children)[0:2]) for x in x1]
+    #     val_roots_modifiers = [(list(x.sents)[0].root, list(list(x.sents)[0].root.children)[0:2]) for x in x2]
+    #     for idx,i in enumerate(train_list_of_dict):
+    #         i["dep"] = str(train_roots_modifiers[idx])
+    #     for idx,i in enumerate(val_list_of_dict):
+    #         i["dep"] = str(val_roots_modifiers[idx])
+    #     with open('./data/train','w') as f:
+    #         json.dump(train_list_of_dict,f)
+    #     with open('./data/val','w') as f:
+    #         json.dump(val_list_of_dict,f)
+    val_dataset = datasets.Dataset.from_dict({"translation":list_of_dict[1]})
+    valunlabled = datasets.Dataset.from_dict({"translation":list_of_dict[0]})
+    train_dataset = datasets.Dataset.from_dict({"translation":list_of_dict[2]})
+    comp = datasets.Dataset.from_dict({"translation":list_of_dict[3]})
+    train_val_dataset_dict = DatasetDict({'train':train_dataset,'val':val_dataset,'val_unlabeled':valunlabled,'comp': comp})
     #mapping = lambda x:mapping_func(x, src_tokenizer, tgt_tokenizer)
     #train_val_dataset_dict.map(mapping, batched=True)
     return train_val_dataset_dict
@@ -117,20 +127,23 @@ def get_text_from_file(path,other_model):
                 curr_lang = TGT_LANG
             elif line == "":
                 if is_labeled:
-                    for eng_sen, ger_sen in zip(english_sentences,german_sentences):
+                    for eng_sen, ger_sen in zip(english_sentences, german_sentences):
                         if other_model:
-                            texts.append({'id':str(i),'translation':{'de': ger_sen, 'en': eng_sen}})
+                            sen_dep = dep_parse(eng_sen)
+                            sen_dep = (list(sen_dep.sents)[0].root, list(list(sen_dep.sents)[0].root.children)[0:2])
+                            texts.append({'de': ger_sen, 'en': eng_sen, 'dep': str(sen_dep)})
                         else:
                             texts.append({'text': ger_sen,'labels': eng_sen})
                 else:
-                    for ger_sen in german_sentences:
-                        texts.append({'id':str(i),'translation':{'de':ger_sen}})
+                    for ger_sen,root,modifier in zip(german_sentences, roots, modifiers):
+                        texts.append({'de':ger_sen, 'dep':"("+root+', '+str(modifier)+")"})
             else:
                 if curr_lang == SRC_LANG:
                     if not is_labeled and line.startswith('Roots in English'):
-                        continue
+                        roots = line.replace('Roots in English: ','').split(', ')
                     if not is_labeled and line.startswith('Modifiers in English'):
-                        continue
+                        modifiers = line.replace('Modifiers in English: ','').split('), (')
+                        modifiers = [modifier.replace('(','').replace(")",'').split(', ') for modifier in modifiers]
                     german_sentences.append(line)
                 elif is_labeled and curr_lang == TGT_LANG:
                     english_sentences.append(line)
@@ -175,3 +188,4 @@ def sequential_transforms(*transforms):
             txt_input = transform(txt_input)
         return txt_input
     return func
+
