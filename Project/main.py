@@ -62,7 +62,7 @@ t5_tokenizer = AutoTokenizer.from_pretrained("t5-"+args.model_size)
 
 def preprocess_function(examples):
 
-    inputs = [example[SRC_LANG] for example in examples["translation"]]
+    inputs = [example[SRC_LANG]for example in examples["translation"]]
     targets = [example[TGT_LANG] for example in examples["translation"]]
     model_inputs = t5_tokenizer(inputs, max_length=128, truncation=True)
 
@@ -229,9 +229,10 @@ def main_train_n_val():
         output_dir="./comp_model",
         logging_steps=(batch_size*10),
         save_steps=10,
-        eval_steps=1,
+        eval_steps=4,
         num_train_epochs=8,
         lr_scheduler_type='constant_with_warmup',
+        logging_strategy='epoch',
         save_strategy='epoch',
         save_total_limit=4,
         #group_by_length=True,

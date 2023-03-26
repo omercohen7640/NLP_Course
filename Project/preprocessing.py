@@ -132,10 +132,13 @@ def get_text_from_file(path, other_model):
                                 cur_modifiers = random.sample(all_children, 2)
                                 modifiers.append(f"({cur_modifiers[0]},{cur_modifiers[1]})")
                         else:
-                            texts.append({'de':', '.join(roots) + ' ' + ', '.join(modifiers) + ' ' + german_sentences,  'en':english_sentences})
+                            #texts.append({'de':', '.join(roots) + ' ' + ', '.join(modifiers) + ' ' + german_sentences,  'en':english_sentences})
+                            texts.append({'de':f"translate from German to English with the words: {', '.join(roots)} and " \
+                                                f"{', '.join(modifiers).replace('(','').replace(')','')}: " + german_sentences ,  'en':english_sentences})
 
                     else:
-                        texts.append({'de': roots + ' ' + modifiers + ' ' + german_sentences})
+                        texts.append({'de':f"translate from German to English with the words: {roots} and " \
+                                                f"{modifiers.replace('(','').replace(')','')}: " + german_sentences})
             else:
                 if curr_lang == SRC_LANG:
                     if not is_labeled:

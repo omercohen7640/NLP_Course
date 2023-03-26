@@ -12,7 +12,7 @@ def compute_metrics(tagged_en, true_en):
     metric = evaluate.load("sacrebleu")
     # metric = evaluate.load("accuracy")
     tagged_en = [x.strip().lower() for x in tagged_en]
-    true_en = [[x[0].strip().lower()] for x in true_en]
+    true_en = [x.strip().lower() for x in true_en]
 
     result = metric.compute(predictions=tagged_en, references=true_en)
     result = result['score']
@@ -28,14 +28,14 @@ def read_file(file_path):
             line = line.strip()
             if line == 'English:' or line == 'German:':
                 if len(cur_str) > 0:
-                    cur_list.append(cur_str)
+                    cur_list.append(cur_str.strip())
                     cur_str = ''
                 if line == 'English:':
                     cur_list = file_en
                 else:
                     cur_list = file_de
                 continue
-            cur_str += line
+            cur_str += line + ' '
     if len(cur_str) > 0:
         cur_list.append(cur_str)
     return file_en, file_de
