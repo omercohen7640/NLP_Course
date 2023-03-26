@@ -68,15 +68,15 @@ def get_dataset_dict2():
             with open('./data/' + filename + s, 'w') as (f):
                 json.dump(text, f)
             list_of_dict.append(text)
-    else:
-        val_dataset = datasets.Dataset.from_dict({'translation': list_of_dict[1]})
-        valunlabled = datasets.Dataset.from_dict({'translation': list_of_dict[0]})
-        train_dataset = datasets.Dataset.from_dict({'translation': list_of_dict[2]})
-        trainval_dataset = datasets.Dataset.from_dict({'translation': list_of_dict[2] + list_of_dict[1]})
-        comp = datasets.Dataset.from_dict({'translation': list_of_dict[3]})
-        train_val_dataset_dict = DatasetDict({'train': 'train_dataset', 'val': 'val_dataset', 'trainval': 'trainval_dataset', 
-         'val_unlabeled': 'valunlabled', 'comp': 'comp'})
-        return train_val_dataset_dict
+
+    val_dataset = datasets.Dataset.from_dict({'translation': list_of_dict[1]})
+    valunlabled = datasets.Dataset.from_dict({'translation': list_of_dict[0]})
+    train_dataset = datasets.Dataset.from_dict({'translation': list_of_dict[2]})
+    trainval_dataset = datasets.Dataset.from_dict({'translation': list_of_dict[2] + list_of_dict[1]})
+    comp = datasets.Dataset.from_dict({'translation': list_of_dict[3]})
+    train_val_dataset_dict = DatasetDict({'train': train_dataset, 'val': val_dataset, 'trainval': trainval_dataset, 
+        'val_unlabeled': valunlabled, 'comp': comp})
+    return train_val_dataset_dict
 
 
 class CustomDataset(Dataset):
@@ -111,15 +111,12 @@ def get_text_from_file(path, other_model):
         for i, line in enumerate(f.readlines()):
             line = line[:-1] if line[-1] == '\n' else line
             if line == GER_INIT:
-                german_sentences = ''
+                german_sentences = ""
                 curr_lang = SRC_LANG
-        else:
-            if is_labeled:
-                if line == ENG_INIT:
-                    english_sentences = ''
-                    curr_lang = TGT_LANG
-            else:
-                if line == '':
+            elif is_labeled and line == ENG_INIT:
+                english_sentences = ""
+                curr_lang = TGT_LANG
+            elif line == '':
                     if is_labeled:
                         doc = dep_parse(english_sentences)
                         roots = []
@@ -135,22 +132,23 @@ def get_text_from_file(path, other_model):
                                 cur_modifiers = random.sample(all_children, 2)
                                 modifiers.append(f"({cur_modifiers[0]},{cur_modifiers[1]})")
                         else:
-                            texts.append({'de':','.join(roots) + ' ' + ', '.join(modifiers) + ' ' + german_sentences,  'en':english_sentences})
+                            texts.append({'de':', '.join(roots) + ' ' + ', '.join(modifiers) + ' ' + german_sentences,  'en':english_sentences})
 
                     else:
-                        texts.append({'de': roots + modifiers + german_sentences})
-
-        if curr_lang == SRC_LANG:
-            if not is_labeled:
-                if line.startswith('Roots in English'):
-                    roots = line.replace('Roots in English: ', '')
-            if not is_labeled:
-                if line.startswith('Modifiers in English'):
-                    modifiers = line.replace('Modifiers in English: ', '')
-                else:
-                    german_sentences += line
-            elif is_labeled and curr_lang == TGT_LANG:
-                english_sentences += line
+                        texts.append({'de': roots + ' ' + modifiers + ' ' + german_sentences})
+            else:
+                if curr_lang == SRC_LANG:
+                    if not is_labeled:
+                        if line.startswith('Roots in English'):
+                            roots = line.replace('Roots in English: ', '')
+                        elif line.startswith('Modifiers in English'):
+                            modifiers = line.replace('Modifiers in English: ', '')
+                        else:
+                            german_sentences += line
+                    else:
+                        german_sentences += line
+                elif is_labeled and curr_lang == TGT_LANG:
+                        english_sentences += line
     return texts
 
 
