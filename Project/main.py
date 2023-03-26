@@ -240,7 +240,7 @@ def main_train_n_val():
         gradient_accumulation_steps= 2,
         learning_rate= 6.901976269220273e-05,
         weight_decay= 0.00016258342609514183,
-        #disable_tqdm=True,
+        disable_tqdm=True,
     )
 
     model = AutoModelForSeq2SeqLM.from_pretrained("t5-"+args.model_size)
