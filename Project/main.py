@@ -104,7 +104,7 @@ def write_comp_file(tagging, dataset):
 
 def postprocess_text(preds, labels):
     preds = [pred.strip() for pred in preds]
-    labels = [[label.strip()] for label in labels]
+    labels = [label.strip() for label in labels]
 
     return preds, labels
 
@@ -123,7 +123,7 @@ def compute_metrics2(eval_preds):
     # Some simple post-processing
     decoded_preds, decoded_labels = postprocess_text(decoded_preds, decoded_labels)
 
-    result =  project_evaluate.compute_metrics(decoded_preds,decoded_labels)
+    result =  project_evaluate.compute_metrics(decoded_preds, decoded_labels)
     return {'score': result}
 
 bleu = evaluate.load("bleu")
@@ -144,8 +144,7 @@ def train_network2(training_args, model, train_data, val_data, model_path=None, 
         )
         #training
         bleu_acc = trainer.train()
-        model.save_pretrained(save_path)
-        t5_tokenizer.save_pretrained(save_path)
+        trainer.save(save_path)
         trainer.plot_results(header='trial_num{}'.format(0))
     
 
@@ -229,7 +228,7 @@ def main_train_n_val():
         output_dir="./comp_model",
         logging_steps=(batch_size*10),
         save_steps=10,
-        eval_steps=4,
+        eval_steps=2,
         num_train_epochs=8,
         lr_scheduler_type='constant_with_warmup',
         logging_strategy='epoch',
@@ -238,7 +237,7 @@ def main_train_n_val():
         #group_by_length=True,
         predict_with_generate=True,
         generation_num_beams= 7,
-        gradient_accumulation_steps= 2,
+        gradient_accumulation_steps= 1,
         learning_rate= 6.901976269220273e-05,
         weight_decay= 0.00016258342609514183,
         disable_tqdm=True,
