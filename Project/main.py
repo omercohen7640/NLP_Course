@@ -62,7 +62,7 @@ t5_tokenizer = AutoTokenizer.from_pretrained("t5-"+args.model_size)
 
 def preprocess_function(examples):
 
-    inputs = [example[SRC_LANG] + example[DEP] for example in examples["translation"]]
+    inputs = [example[SRC_LANG] for example in examples["translation"]]
     targets = [example[TGT_LANG] for example in examples["translation"]]
     model_inputs = t5_tokenizer(inputs, max_length=128, truncation=True)
 
@@ -130,7 +130,7 @@ bleu = evaluate.load("bleu")
 
 
 
-def train_network2(training_args, model, train_data, val_data, model_path=None):
+def train_network2(training_args, model, train_data, val_data, model_path=None, save_path=None):
     if model_path is None:
         data_collator = DataCollatorForSeq2Seq(tokenizer=t5_tokenizer,model=model)
         trainer = Seq2SeqTrainer(
@@ -144,12 +144,10 @@ def train_network2(training_args, model, train_data, val_data, model_path=None):
         )
         #training
         bleu_acc = trainer.train()
+        model.save_pretrained(save_path)
+        t5_tokenizer.save_pretrained(save_path)
         trainer.plot_results(header='trial_num{}'.format(0))
-    val_tag = CustomDataset('./data/val.unlabeled')
-    comp = CustomDataset('./data/comp.unlabeled')
-    for data in [comp, val_tag]:
-        tagging = model.generate(data)
-        write_comp_file(tagging, data)
+    
 
     
 def model_init(trail):
@@ -166,48 +164,6 @@ def optuna_hp_space(trial):
         'gradient_accumulation_steps': trial.suggest_int("gradient_accumulation_steps", 2, 5),
     }
     return hp_space
-
-
-def main2():
-    batch_size = args.batch_size
-    wd = 1e-4
-    epochs = 10
-    beam = 3
-    lr_scheduler_type = 'constant_with_warmup'
-    training_args = Seq2SeqTrainingArguments(
-        evaluation_strategy="epoch",
-        per_device_train_batch_size=batch_size,
-        per_device_eval_batch_size=batch_size,
-        output_dir="./",
-        logging_steps=(batch_size*10),
-        save_steps=10,
-        eval_steps=4,
-        weight_decay=wd,
-        num_train_epochs=epochs,
-        lr_scheduler_type='constant_with_warmup',
-        save_strategy='epoch',
-        save_total_limit=4,
-        #group_by_length=True,
-        predict_with_generate=True,
-        generation_num_beams=beam,
-        # use_mps_device=True,
-        # logging_steps=1000,
-        # save_steps=500,
-        # eval_steps=7500,
-        # warmup_steps=2000,
-        # save_total_limit=3,
-    )
-
-    model = AutoModelForSeq2SeqLM.from_pretrained("t5-"+args.model_size)
-    # increase max length to generate longer sentences
-    model.config.max_length = 512
-    data = get_dataset_dict2()
-
-
-    train_data = data['train'].map(preprocess_function, batched=True)
-    val_data = data['val'].map(preprocess_function, batched=True)
-
-    train_network2(training_args, model, train_data, val_data, args.model_path)
 
 
 
@@ -263,10 +219,46 @@ def parameter_search():
     print(best_trial)
 
 
+def main_train_n_val():
+    batch_size = 4
+
+    training_args = Seq2SeqTrainingArguments(
+        evaluation_strategy="epoch",
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=batch_size,
+        output_dir="./comp_model",
+        logging_steps=(batch_size*10),
+        save_steps=10,
+        eval_steps=1,
+        num_train_epochs=8,
+        lr_scheduler_type='constant_with_warmup',
+        save_strategy='epoch',
+        save_total_limit=4,
+        #group_by_length=True,
+        predict_with_generate=True,
+        generation_num_beams= 5,
+        gradient_accumulation_steps= 2,
+        learning_rate= 6.901976269220273e-05,
+        weight_decay= 0.00016258342609514183,
+        disable_tqdm=True,
+    )
+
+    model = AutoModelForSeq2SeqLM.from_pretrained("t5-"+args.model_size)
+    # increase max length to generate longer sentences
+    model.config.max_length = 512
+    data = get_dataset_dict2()
+
+
+    trainval_data = data['train'].map(preprocess_function, batched=True)
+    val_data = data['val'].map(preprocess_function, batched=True)
+
+    train_network2(training_args, model, trainval_data, val_data, args.model_path, "./val_model")
+
+
 
 
 
 
 if __name__ == '__main__':
     #parameter_search()
-    main2()
+    main_train_n_val()
